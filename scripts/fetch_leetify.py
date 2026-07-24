@@ -135,7 +135,9 @@ def side_aggregate(players):
     }
 
 
-def build_record(steam_id, summary, detail):
+def build_record(steam_id, summary, detail, tracked=()):
+    """Build one archive record. `tracked` is the set of steam64 ids we follow,
+    used to note which of them shared this lobby (the "party")."""
     me = next(
         (s for s in detail.get("stats", []) if s.get("steam64_id") == steam_id),
         None,
@@ -162,6 +164,7 @@ def build_record(steam_id, summary, detail):
         outcome = "tie"
 
     lobby = None
+    party = None
     if detail.get("stats"):
         teammates = [
             p
@@ -172,6 +175,11 @@ def build_record(steam_id, summary, detail):
         opponents = [
             p for p in detail["stats"] if p.get("initial_team_number") != my_team
         ]
+        # which other tracked players were on this player's team — lets the
+        # dashboard split results by who was in the queue
+        party = sorted(
+            p["steam64_id"] for p in teammates if p.get("steam64_id") in tracked
+        )
         lobby = {
             "rounds": max(
                 [p.get("rounds_count") or 0 for p in detail["stats"]] or [0]
@@ -189,6 +197,7 @@ def build_record(steam_id, summary, detail):
         "has_banned_player": summary.get("has_banned_player"),
         "score": [my_score, opp_score],
         "outcome": outcome,
+        "party": party,
         "me": me,
         "lobby": lobby,
     }
@@ -210,7 +219,7 @@ def get_match_detail(match_id):
     return detail
 
 
-def sync_matches(steam_id, matches_path):
+def sync_matches(steam_id, matches_path, tracked=()):
     archive = load_json(matches_path, [])
     known_ids = {m["id"] for m in archive}
     summaries = api_get(f"/v3/profile/matches?steam64_id={steam_id}")
@@ -220,7 +229,7 @@ def sync_matches(steam_id, matches_path):
     added = 0
     for summary in new_matches:
         detail = get_match_detail(summary["id"])
-        record = build_record(steam_id, summary, detail)
+        record = build_record(steam_id, summary, detail, tracked)
         if record is None:
             print(f"  skipping {summary['id']}: player stats not present")
             continue
@@ -251,7 +260,7 @@ def sync_profile(steam_id, history_path):
     return profile
 
 
-def sync_player(entry):
+def sync_player(entry, tracked=()):
     steam_id = entry["steam64_id"]
     pdir = os.path.normpath(os.path.join(DATA_DIR, entry.get("path", ".")))
     print(f"syncing {entry.get('name') or steam_id}")
@@ -259,14 +268,14 @@ def sync_player(entry):
         profile = sync_profile(steam_id, os.path.join(pdir, "profile_history.json"))
         if profile.get("name"):
             entry["name"] = profile["name"]
-        sync_matches(steam_id, os.path.join(pdir, "matches.json"))
+        sync_matches(steam_id, os.path.join(pdir, "matches.json"), tracked)
         entry.pop("unavailable", None)
     except urllib.error.HTTPError as e:
         print(f"  unavailable (HTTP {e.code}) — private profile or unknown id, skipping")
         entry["unavailable"] = True
 
 
-def rebuild_player(entry):
+def rebuild_player(entry, tracked=()):
     """Recompute lobby aggregates for an existing archive from cached details.
 
     Offline: touches no API. Used when the aggregate shape changes so the
@@ -284,11 +293,12 @@ def rebuild_player(entry):
         if not detail or not detail.get("stats"):
             missing += 1
             continue
-        fresh = build_record(steam_id, record, detail)
+        fresh = build_record(steam_id, record, detail, tracked)
         if fresh is None or fresh.get("lobby") is None:
             missing += 1
             continue
         record["lobby"] = fresh["lobby"]
+        record["party"] = fresh["party"]
         rebuilt += 1
     save_json(matches_path, archive)
     print(
@@ -304,12 +314,13 @@ def main():
     players = load_json(PLAYERS_PATH, None)
     if players is None:
         players = [{"steam64_id": MAIN_STEAM64_ID, "name": "", "path": "."}]
+    tracked = {e["steam64_id"] for e in players}
     if rebuild:
         for entry in players:
-            rebuild_player(entry)
+            rebuild_player(entry, tracked)
         return
     for entry in players:
-        sync_player(entry)
+        sync_player(entry, tracked)
     save_json(PLAYERS_PATH, players)
 
 

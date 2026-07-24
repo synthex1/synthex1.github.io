@@ -66,6 +66,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* author display rules must not beat it */
   body.viz-root {
     margin: 0;
     background: var(--page);
@@ -88,6 +89,16 @@
   .filters button.opt[aria-pressed="true"] { background: var(--series-1); color: #fff; }
   .filters button.opt:not([aria-pressed="true"]):hover { color: var(--ink-1); }
   .filters .flabel { font-size: 13px; color: var(--ink-muted); margin-left: 6px; }
+  .pwrap { display: inline-flex; align-items: center; gap: 8px; }
+  .psel {
+    appearance: none; font: inherit; font-size: 14px; padding: 6px 30px 6px 12px;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--surface-1);
+    color: var(--ink-1); cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-muted) 50%),
+                      linear-gradient(135deg, var(--ink-muted) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 52%, calc(100% - 11px) 52%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+  }
 
   .kpi-row {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
@@ -213,6 +224,36 @@
     padding: 15px 18px; margin-bottom: 16px; font-size: 14px; color: var(--ink-2);
   }
   .method h4 { margin: 0 0 8px; font-size: 14px; color: var(--ink-1); font-weight: 650; }
+  .cmpbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  details.method summary {
+    cursor: pointer; font-weight: 650; color: var(--ink-1); font-size: 14px;
+    list-style-position: outside; margin-left: 2px;
+  }
+  details.method[open] summary { margin-bottom: 10px; }
+  details.method ol { margin-top: 0; }
+
+  /* real-units comparison between soft and tough lobbies */
+  .deltalist { display: flex; flex-direction: column; }
+  .drow {
+    display: grid; grid-template-columns: minmax(180px, 1.4fr) auto minmax(60px, 1fr) 62px;
+    gap: 14px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--grid);
+  }
+  .drow:last-child { border-bottom: 0; }
+  .dname { font-size: 14px; color: var(--ink-1); display: flex; flex-direction: column; }
+  .dname small { font-size: 12px; color: var(--ink-muted); font-weight: 400; }
+  .dvals { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; font-size: 14px; white-space: nowrap; }
+  .dfrom { color: var(--ink-muted); }
+  .darrow { color: var(--axis); }
+  .dto { color: var(--ink-2); font-weight: 600; }
+  .dto.up { color: var(--pos); }
+  .dbar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+  .dbar i { display: block; height: 100%; border-radius: 4px; }
+  .dpct { text-align: right; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) {
+    .drow { grid-template-columns: 1fr auto; gap: 4px 10px; }
+    .dbar { grid-column: 1 / -1; }
+    .dpct { grid-row: 1; grid-column: 2; }
+  }
   .method ol { margin: 0; padding-left: 20px; }
   .method li { margin-bottom: 5px; }
   .method li:last-child { margin-bottom: 0; }
@@ -230,9 +271,11 @@
   </header>
 
   <div class="filters" id="filters" role="group" aria-label="Filters" hidden>
+    <div class="seg" id="viewSeg" role="group" aria-label="View"></div>
     <div class="seg" id="playerSeg" role="group" aria-label="Player"></div>
     <div class="seg" id="rangeSeg" role="group" aria-label="Date range"></div>
     <div class="seg" id="queueSeg" role="group" aria-label="Queue"></div>
+    <span class="pwrap" id="partyWrap" hidden></span>
     <span class="flabel" id="filterNote"></span>
   </div>
 
@@ -383,9 +426,13 @@
 
   // ---------- data ----------
   let PLAYERS = [{ steam64_id: "main", name: "", path: "." }];
+  let ALL_PLAYERS = PLAYERS;   // includes private profiles: they still show up in lobbies
   try {
     const r = await fetch("data/players.json");
-    if (r.ok) PLAYERS = (await r.json()).filter((p) => !p.unavailable);
+    if (r.ok) {
+      ALL_PLAYERS = await r.json();
+      PLAYERS = ALL_PLAYERS.filter((p) => !p.unavailable);
+    }
   } catch (e) { /* single-player fallback */ }
 
   const ALL_QUEUES = [
@@ -402,27 +449,24 @@
     { id: "90", label: "Last 90 days", days: 90 },
     { id: "30", label: "Last 30 days", days: 30 },
   ];
-  const state = { range: "all", queue: "all", player: PLAYERS[0].steam64_id };
+  const state = {
+    range: "all", queue: "all", player: PLAYERS[0].steam64_id,
+    view: "player", party: "any", compareMetric: "winrate", compareShared: false,
+  };
+  const playerName = (id) => {
+    const p = ALL_PLAYERS.find((x) => x.steam64_id === id);
+    // a tracked player whose Leetify profile is private has no name to show,
+    // but still turns up in lobbies
+    return (p && p.name) || (id ? "Player …" + String(id).slice(-4) : "unknown");
+  };
 
   let MATCHES = [], HISTORY = [], QUEUES = [], latest = null, profile = null;
+  const ARCHIVES = new Map();   // steam64_id -> { matches, history }
 
-  async function loadPlayer(entry) {
-    const base = "data/" + (entry.path === "." || !entry.path ? "" : entry.path + "/");
-    let matches, history;
-    try {
-      [matches, history] = await Promise.all([
-        fetch(base + "matches.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-        fetch(base + "profile_history.json").then((r) => (r.ok ? r.json() : [])),
-      ]);
-    } catch (e) {
-      $("status").hidden = false;
-      $("status").textContent = `Could not load ${base}matches.json — if you opened this file directly, serve it over HTTP (python3 -m http.server).`;
-      return false;
-    }
+  // a new session starts after a >2h gap between match end times
+  function prepare(matches) {
     matches.sort((a, b) => a.finished_at.localeCompare(b.finished_at));
     matches.forEach((m) => { m.date = new Date(m.finished_at); });
-
-    // session index: a new session starts after a >2h gap between match end times
     let session = 0, prev = null;
     for (const m of matches) {
       if (prev && m.date - prev > 2 * 3600e3) session += 1;
@@ -434,17 +478,41 @@
       counts[m.session] = (counts[m.session] || 0) + 1;
       m.gameInSession = counts[m.session];
     }
+    return matches;
+  }
 
-    MATCHES = matches;
-    HISTORY = history;
-    QUEUES = ALL_QUEUES.filter((q) => q.id === "all" || matches.some((m) => m.data_source === q.id));
+  async function fetchArchive(entry) {
+    if (ARCHIVES.has(entry.steam64_id)) return ARCHIVES.get(entry.steam64_id);
+    const base = "data/" + (entry.path === "." || !entry.path ? "" : entry.path + "/");
+    const [matches, history] = await Promise.all([
+      fetch(base + "matches.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+      fetch(base + "profile_history.json").then((r) => (r.ok ? r.json() : [])),
+    ]);
+    const rec = { entry, matches: prepare(matches), history };
+    ARCHIVES.set(entry.steam64_id, rec);
+    return rec;
+  }
+
+  async function loadPlayer(entry) {
+    let rec;
+    try {
+      rec = await fetchArchive(entry);
+    } catch (e) {
+      $("status").hidden = false;
+      $("status").textContent = `Could not load this player's matches.json — if you opened this file directly, serve it over HTTP (python3 -m http.server).`;
+      return false;
+    }
+    MATCHES = rec.matches;
+    HISTORY = rec.history;
+    QUEUES = ALL_QUEUES.filter((q) => q.id === "all" || MATCHES.some((m) => m.data_source === q.id));
     if (!QUEUES.some((q) => q.id === state.queue)) state.queue = "all";
-    latest = matches.length ? matches[matches.length - 1].date : new Date();
-    profile = history.length ? history[history.length - 1] : null;
+    latest = MATCHES.length ? MATCHES[MATCHES.length - 1].date : new Date();
+    profile = HISTORY.length ? HISTORY[HISTORY.length - 1] : null;
+    if (!MATCHES.some((m) => (m.party || []).includes(state.party))) state.party = "any";
 
     const d = (x) => x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    let sub = `${matches.length} matches archived`;
-    if (matches.length) sub += ` · ${d(matches[0].date)} – ${d(latest)}`;
+    let sub = `${MATCHES.length} matches archived`;
+    if (MATCHES.length) sub += ` · ${d(MATCHES[0].date)} – ${d(latest)}`;
     if (profile) {
       const r = profile.ranks || {};
       const bits = [];
@@ -863,11 +931,25 @@
     return g;
   }
 
-  function filtered() {
+  function partyOk(m) {
+    if (state.party === "any") return true;
+    const party = m.party || [];
+    if (state.party === "solo") return party.length === 0;
+    return party.includes(state.party);
+  }
+  function filtered(matches = MATCHES, { party = true } = {}) {
     const r = RANGES.find((x) => x.id === state.range);
-    const cutoff = r.days ? new Date(latest.getTime() - r.days * 86400e3) : null;
-    return MATCHES.filter((m) =>
-      (!cutoff || m.date >= cutoff) && (state.queue === "all" || m.data_source === state.queue));
+    const cutoff = r.days && latest ? new Date(latest.getTime() - r.days * 86400e3) : null;
+    return matches.filter((m) =>
+      (!cutoff || m.date >= cutoff) &&
+      (state.queue === "all" || m.data_source === state.queue) &&
+      (!party || partyOk(m)));
+  }
+  // tracked players who actually appear in this archive's parties, most-played first
+  function partyMates(matches) {
+    const c = new Map();
+    for (const m of matches) for (const id of (m.party || [])) c.set(id, (c.get(id) || 0) + 1);
+    return [...c].sort((a, b) => b[1] - a[1]);
   }
 
   function corr(a, b) {
@@ -882,28 +964,73 @@
 
   // ---------- render ----------
   function renderAll() {
+    const solo = state.view === "player";
     const pseg = $("playerSeg");
     if (PLAYERS.length > 1)
       segButtons(pseg, PLAYERS.map((p) => ({ id: p.steam64_id, label: p.name || p.steam64_id })), "player", switchPlayer);
     else pseg.hidden = true;
+    pseg.hidden = PLAYERS.length <= 1 || !solo;
     segButtons($("rangeSeg"), RANGES, "range");
     segButtons($("queueSeg"), QUEUES, "queue");
+    if (PLAYERS.length > 1)
+      segButtons($("viewSeg"), [{ id: "player", label: "One player" }, { id: "compare", label: "Compare" }], "view", switchView);
+    else $("viewSeg").hidden = true;
+    renderPartySelect();
     $("filters").hidden = false;
     $("status").hidden = true;
+
+    const root = $("sections");
+    root.replaceChildren();
+    if (!solo) { renderCompare(root); return; }
 
     const ms = filtered();
     $("filterNote").textContent = `${ms.length} matches in view`;
     renderKpis(ms);
-    const root = $("sections");
-    root.replaceChildren();
-    if (!ms.length) { root.append(el("p", { class: "csub" }, "No matches match the current filters.")); return; }
+    if (!ms.length) {
+      $("kpis").replaceChildren();
+      root.append(el("p", { class: "csub" }, "No matches match the current filters."));
+      return;
+    }
 
     renderForm(root, ms);
     renderMaps(root, ms);
     renderQueues(root, ms);
     renderMechanics(root, ms);
     renderSessions(root, ms);
+    renderSquad(root);
     renderLobby(root, ms);
+  }
+
+  function renderPartySelect() {
+    const wrap = $("partyWrap");
+    wrap.replaceChildren();
+    const mates = partyMates(MATCHES);
+    if (state.view !== "player" || !mates.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    const solo = MATCHES.filter((m) => (m.party || []).length === 0).length;
+    const opts = [
+      { id: "any", label: `Anyone (${MATCHES.length})` },
+      ...(solo ? [{ id: "solo", label: `Without the group (${solo})` }] : []),
+      ...mates.map(([id, n]) => ({ id, label: `With ${playerName(id)} (${n})` })),
+    ];
+    if (!opts.some((o) => o.id === state.party)) state.party = "any";
+    const sel = el("select", { class: "psel", "aria-label": "Queued with",
+      onchange: (e) => { state.party = e.target.value; renderAll(); } });
+    for (const o of opts) {
+      const opt = el("option", { value: o.id }, o.label);
+      if (o.id === state.party) opt.selected = true;
+      sel.append(opt);
+    }
+    wrap.append(el("span", { class: "flabel" }, "Queued with"), sel);
+  }
+
+  async function switchView(option) {
+    if (option.id !== "compare") { renderAll(); return; }
+    const root = $("sections");
+    $("kpis").replaceChildren();
+    root.replaceChildren(el("p", { class: "csub" }, "Loading every tracked player's archive…"));
+    await Promise.all(PLAYERS.map((p) => fetchArchive(p).catch(() => null)));
+    renderAll();
   }
 
   function renderKpis(ms) {
@@ -1120,6 +1247,168 @@
     root.append(s.sec);
   }
 
+  // ---------- who you queue with ----------
+  const METRICS = [
+    { id: "winrate", label: "Winrate", fmt: (v) => fmt1(v) + "%", acc: (a) => winrate(a) * 100, good: 1 },
+    { id: "rating", label: "Leetify rating", fmt: (v) => signed(v, fmt2), acc: (a) => mean(a.map((m) => m.me.leetify_rating)) * 100, good: 1, diverging: true },
+    { id: "kd", label: "K/D", fmt: fmt2, acc: (a) => { const k = a.reduce((s, m) => s + m.me.total_kills, 0), d = a.reduce((s, m) => s + m.me.total_deaths, 0); return d ? k / d : null; }, good: 1 },
+    { id: "adr", label: "ADR", fmt: fmt1, acc: (a) => mean(a.map((m) => m.me.dpr)), good: 1 },
+    { id: "hs", label: "Headshot %", fmt: (v) => fmt1(v) + "%", acc: (a) => mean(a.map((m) => m.me.accuracy_head)) * 100, good: 1 },
+    { id: "preaim", label: "Preaim (°)", fmt: fmt1, acc: (a) => mean(a.map((m) => m.me.preaim)), good: -1 },
+    { id: "reaction", label: "Reaction (ms)", fmt: (v) => Math.round(v) + "", acc: (a) => mean(a.map((m) => m.me.reaction_time)) * 1000, good: -1 },
+    { id: "cstrafe", label: "Counter-strafing %", fmt: (v) => fmt1(v) + "%", acc: (a) => mean(a.map((m) => m.me.counter_strafing_shots_good_ratio)) * 100, good: 1 },
+  ];
+
+  function renderSquad(root) {
+    const base = filtered(MATCHES, { party: false });
+    const MIN = 5;
+    const mates = partyMates(base).filter(([, n]) => n >= MIN);
+    const solo = base.filter((m) => !(m.party || []).length);
+    const grouped = base.filter((m) => (m.party || []).length);
+    if (!mates.length || !solo.length) return;
+
+    const s = section("Who you queue with",
+      `Every match here knows which tracked players shared the lobby, so the same numbers can be split by who you were queued with. ` +
+      `Needs at least ${MIN} games together to appear.`);
+
+    // headline — solo vs grouped
+    const c0 = card("Solo queue vs queueing with the group", "your results when nobody else tracked here was on your team, versus when someone was");
+    vCols(c0.body, [
+      { label: "On your own", sub: `${solo.length} games`, value: winrate(solo) * 100, cls: "demph",
+        tip: [{ value: fmt1(winrate(solo) * 100) + "%", label: "winrate" }, { value: fmtRating(mean(solo.map((m) => m.me.leetify_rating))), label: "avg rating" }] },
+      { label: "With the group", sub: `${grouped.length} games`, value: winrate(grouped) * 100,
+        tip: [{ value: fmt1(winrate(grouped) * 100) + "%", label: "winrate" }, { value: fmtRating(mean(grouped.map((m) => m.me.leetify_rating))), label: "avg rating" }] },
+    ], { fmt: (v) => Math.round(v) + "%" });
+    c0.setTable(["Split", "Matches", "Winrate", "Avg rating", "Avg K/D", "Avg ADR"], [["On your own", solo], ["With the group", grouped]].map(([l, a]) => [
+      l, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+      fmt2(mean(a.map((m) => m.me.kd_ratio))), fmt1(mean(a.map((m) => m.me.dpr)))]));
+    s.grid.append(c0.fig);
+
+    // winrate by how many of the group are in the lobby
+    const sizes = [0, 1, 2, 3, 4].map((n) => [n, base.filter((m) => (m.party || []).length === (n === 4 ? 4 : n) || (n === 4 && (m.party || []).length >= 4))])
+      .map(([n, a]) => [n, a]).filter(([, a]) => a.length >= 3);
+    if (sizes.length >= 2) {
+      const c1 = card("Winrate by how many of you are queued", "0 means solo; larger parties mean more of the tracked group on your team");
+      vCols(c1.body, sizes.map(([n, a]) => ({
+        label: n === 0 ? "Solo" : `+${n}`, sub: `${a.length} games`, value: winrate(a) * 100,
+        tipTitle: n === 0 ? "Queued alone" : `Queued with ${n} of the group`,
+        tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
+              { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "your avg rating" }],
+      })), { fmt: (v) => Math.round(v) + "%" });
+      c1.setTable(["Party", "Matches", "Winrate", "Avg rating"], sizes.map(([n, a]) => [
+        n === 0 ? "Solo" : `+${n}`, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating)))]));
+      s.grid.append(c1.fig);
+    }
+
+    // with vs without, per team-mate — plotted as the difference, because the
+    // absolute bars sit so close together that the gap is the only readable part
+    for (const met of [METRICS[0], METRICS[1]]) {
+      const unit = met.id === "winrate" ? " pts" : "";
+      const c = card(`${met.label}: with them versus without them`,
+        `the change in your own ${met.label.toLowerCase()} when they are in the lobby — right of the line is better with them`);
+      const rows = mates.map(([id, n]) => {
+        const withThem = base.filter((m) => (m.party || []).includes(id));
+        const without = base.filter((m) => !(m.party || []).includes(id));
+        return { id, n, withThem, without, a: met.acc(withThem), b: met.acc(without) };
+      }).filter((r) => r.a != null && r.b != null).sort((x, y) => (y.a - y.b) - (x.a - x.b));
+      hBars(c.body, rows.map((r) => ({
+        label: `${playerName(r.id)} (${r.n})`, value: r.a - r.b, tipTitle: playerName(r.id),
+        tip: [{ value: met.fmt(r.a), label: `with them (${r.withThem.length} games)` },
+              { value: met.fmt(r.b), label: `without them (${r.without.length} games)` },
+              { value: signed(r.a - r.b, fmt1) + unit, label: "difference" }],
+      })), { fmt: (v) => signed(v, fmt1) + unit, diverging: true, labelW: 210 });
+      c.setTable(["Player", "Games together", `${met.label} together`, `${met.label} apart`, "Difference"],
+        rows.map((r) => [playerName(r.id), r.withThem.length, met.fmt(r.a), met.fmt(r.b), signed(r.a - r.b, fmt1) + unit]));
+      s.grid.append(c.fig);
+    }
+    s.before(el("p", { class: "csub" },
+      "Read these as association, not cause. You play different queues and different nights with different people, and a 30-game split " +
+      "swings by several points on luck alone."));
+    root.append(s.sec);
+  }
+
+  // ---------- compare players ----------
+  function renderCompare(root) {
+    const loaded = PLAYERS.map((p) => ARCHIVES.get(p.steam64_id)).filter(Boolean);
+    if (loaded.length < 2) { root.append(el("p", { class: "csub" }, "Need at least two loaded archives to compare.")); return; }
+
+    // matches that appear in more than one archive are games the group shared
+    const seen = new Map();
+    for (const rec of loaded) for (const m of rec.matches) seen.set(m.id, (seen.get(m.id) || 0) + 1);
+    const sharedIds = new Set([...seen].filter(([, n]) => n > 1).map(([id]) => id));
+
+    const rows = loaded.map((rec) => {
+      let ms = filtered(rec.matches, { party: false });
+      if (state.compareShared) ms = ms.filter((m) => sharedIds.has(m.id));
+      return { rec, name: rec.entry.name || rec.entry.steam64_id, ms };
+    }).filter((r) => r.ms.length >= 3).sort((a, b) => b.ms.length - a.ms.length);
+
+    $("filterNote").textContent = `${rows.length} players · ${rows.reduce((s, r) => s + r.ms.length, 0)} matches in view`;
+
+    const s = section("Compare players",
+      state.compareShared
+        ? "Only lobbies that more than one tracked player was in — everyone measured on the same games."
+        : "Each player over their own archive, under the same date and queue filters. The Leetify API only serves the last 100 matches, " +
+          "so a recently added player starts at 100 and grows from there — compare rates, not totals.");
+
+    const controls = el("div", { class: "cmpbar" });
+    const sel = el("select", { class: "psel", "aria-label": "Metric",
+      onchange: (e) => { state.compareMetric = e.target.value; renderAll(); } });
+    for (const m of METRICS) {
+      const o = el("option", { value: m.id }, m.label);
+      if (m.id === state.compareMetric) o.selected = true;
+      sel.append(o);
+    }
+    const toggle = el("button", { class: "tbtn", "aria-pressed": String(state.compareShared),
+      onclick: () => { state.compareShared = !state.compareShared; renderAll(); } },
+      state.compareShared ? "Showing shared lobbies only" : "Show shared lobbies only");
+    controls.append(el("span", { class: "flabel" }, "Metric"), sel, toggle);
+    s.before(controls);
+
+    if (!rows.length) {
+      s.before(el("p", { class: "csub" }, "No player has enough matches in this slice."));
+      root.append(s.sec);
+      return;
+    }
+
+    const met = METRICS.find((m) => m.id === state.compareMetric) || METRICS[0];
+    const c = card(met.label, state.compareShared ? "measured only on lobbies the group shared" : "measured over each player's own matches");
+    const vals = rows.map((r) => ({ name: r.name, n: r.ms.length, v: met.acc(r.ms) })).filter((r) => r.v != null)
+      .sort((a, b) => (met.good > 0 ? b.v - a.v : a.v - b.v));
+    const floor = met.diverging ? 0 : Math.min(...vals.map((v) => v.v)) * 0.82;
+    hBars(c.body, vals.map((r) => ({
+      label: `${r.name} (${r.n})`, value: met.diverging ? r.v : r.v - floor,
+      tipTitle: r.name,
+      tip: [{ value: met.fmt(r.v), label: met.label.toLowerCase() }, { value: String(r.n), label: "matches" }],
+    })), { fmt: (v) => met.fmt(met.diverging ? v : v + floor), diverging: !!met.diverging, labelW: 190 });
+    if (!met.diverging) c.body.append(el("p", { class: "csub" }, "Bars start at a shared baseline rather than zero, to make the gaps readable — read the labels, not the bar lengths."));
+    c.setTable(["Player", "Matches", met.label], vals.map((r) => [r.name, r.n, met.fmt(r.v)]));
+    s.grid.append(c.fig);
+
+    const c2 = card("Everything side by side", "all tracked metrics, same filters", { wide: true });
+    c2.body.append(el("div", { class: "datatable open" },
+      (() => {
+        const table = el("table");
+        const tr = el("tr");
+        ["Player", "Matches", ...METRICS.map((m) => m.label)].forEach((h) => tr.append(el("th", {}, h)));
+        table.append(el("thead", {}, tr));
+        const tb = el("tbody");
+        for (const r of rows) {
+          const tr2 = el("tr");
+          tr2.append(el("td", {}, r.name), el("td", {}, String(r.ms.length)));
+          for (const m of METRICS) {
+            const v = m.acc(r.ms);
+            tr2.append(el("td", {}, v == null ? "–" : m.fmt(v)));
+          }
+          tb.append(tr2);
+        }
+        table.append(tb);
+        return table;
+      })()));
+    s.grid.append(c2.fig);
+    root.append(s.sec);
+  }
+
   // ================= lobby quality =================
   // Every factor is measured over the nine other players in the server, not
   // just the enemy five: when you win, enemy stats sag and teammate stats
@@ -1130,42 +1419,60 @@
     { key: "trade", label: "Structure & trading", cls: "pos" },
   ];
   const ratio = (L, a, b) => (L.sums[b] ? L.sums[a] / L.sums[b] : null);
+  const pc = (v) => fmt1(v * 100) + "%";
+  // `value` is the natural reading in its own units; `dir` says which way is
+  // stronger, so the score can use it while the page can still show real numbers.
   const FACTORS = [
-    { pillar: "aim", key: "preaim", label: "Preaim", hint: "crosshair placement",
-      value: (L) => (L.avgs.preaim == null ? null : -L.avgs.preaim), sample: (L) => L.sums.rounds_count },
-    { pillar: "aim", key: "reaction", label: "Reaction time", hint: "time to fire on an enemy",
-      value: (L) => (L.avgs.reaction_time == null ? null : -L.avgs.reaction_time), sample: (L) => L.sums.rounds_count },
-    { pillar: "aim", key: "cstrafe", label: "Counter-strafing", hint: "shots fired while stopped",
+    { pillar: "aim", key: "preaim", label: "Crosshair placement", dir: -1, fmt: (v) => fmt1(v) + "°",
+      hint: "degrees off target when an enemy appears",
+      value: (L) => L.avgs.preaim, sample: (L) => L.sums.rounds_count },
+    { pillar: "aim", key: "reaction", label: "Reaction time", dir: -1, fmt: (v) => Math.round(v * 1000) + " ms",
+      hint: "how fast they shoot once they see you",
+      value: (L) => L.avgs.reaction_time, sample: (L) => L.sums.rounds_count },
+    { pillar: "aim", key: "cstrafe", label: "Counter-strafing", dir: 1, fmt: pc,
+      hint: "shots fired while properly stopped",
       value: (L) => ratio(L, "counter_strafing_shots_good", "counter_strafing_shots_all"), sample: (L) => L.sums.counter_strafing_shots_all },
-    { pillar: "aim", key: "accspot", label: "Accuracy vs spotted", hint: "hits per shot with an enemy visible",
+    { pillar: "aim", key: "accspot", label: "Accuracy on a visible enemy", dir: 1, fmt: pc,
+      hint: "hits per shot with an enemy in view",
       value: (L) => ratio(L, "shots_hit_enemy_spotted", "shots_fired_enemy_spotted"), sample: (L) => L.sums.shots_fired_enemy_spotted },
-    { pillar: "aim", key: "hsshare", label: "Headshot share", hint: "share of kills that are headshots",
+    { pillar: "aim", key: "hsshare", label: "Headshot share", dir: 1, fmt: pc,
+      hint: "share of their kills that are headshots",
       value: (L) => ratio(L, "total_hs_kills", "total_kills"), sample: (L) => L.sums.total_kills },
-    { pillar: "aim", key: "spray", label: "Spray accuracy", hint: "control on sustained fire",
+    { pillar: "aim", key: "spray", label: "Spray control", dir: 1, fmt: pc,
+      hint: "accuracy on sustained fire",
       value: (L) => L.avgs.spray_accuracy, sample: (L) => L.sums.rounds_count },
 
-    { pillar: "util", key: "utilrate", label: "Utility per round", hint: "nades actually thrown",
+    { pillar: "util", key: "utilrate", label: "Grenades thrown per round", dir: 1, fmt: (v) => fmt1(v),
+      hint: "how much utility the server actually uses",
       value: (L) => (L.sums.rounds_count ? (L.sums.flashbang_thrown + L.sums.he_thrown + L.sums.smoke_thrown + L.sums.molotov_thrown) / L.sums.rounds_count : null),
       sample: (L) => L.sums.rounds_count },
-    { pillar: "util", key: "flashhit", label: "Flashes that blind a foe", hint: "share of flashes that land",
+    { pillar: "util", key: "flashhit", label: "Flashes that blind someone", dir: 1, fmt: pc,
+      hint: "share of flashes that land on an enemy",
       value: (L) => ratio(L, "flashbang_hit_foe", "flashbang_thrown"), sample: (L) => L.sums.flashbang_thrown },
-    { pillar: "util", key: "blind", label: "Blind duration", hint: "seconds of enemy blindness per flash",
+    { pillar: "util", key: "blind", label: "Blind time per flash", dir: 1, fmt: (v) => fmt1(v) + " s",
+      hint: "how long their flashes blind for",
       value: (L) => L.avgs.flashbang_hit_foe_avg_duration, sample: (L) => L.sums.flashbang_hit_foe },
-    { pillar: "util", key: "flashkill", label: "Flash into a kill", hint: "flashes converted to a kill",
+    { pillar: "util", key: "flashkill", label: "Flashes that set up a kill", dir: 1, fmt: pc,
+      hint: "flashes converted into a kill",
       value: (L) => ratio(L, "flashbang_leading_to_kill", "flashbang_thrown"), sample: (L) => L.sums.flashbang_thrown },
-    { pillar: "util", key: "teamflash", label: "Not blinding teammates", hint: "inverse of team-flash rate",
-      value: (L) => { const r = ratio(L, "flashbang_hit_friend", "flashbang_thrown"); return r == null ? null : -r; },
-      sample: (L) => L.sums.flashbang_thrown },
-    { pillar: "util", key: "hedmg", label: "HE damage", hint: "damage per grenade",
+    { pillar: "util", key: "teamflash", label: "Team-flashing", dir: -1, fmt: pc,
+      hint: "flashes that blind their own side",
+      value: (L) => ratio(L, "flashbang_hit_friend", "flashbang_thrown"), sample: (L) => L.sums.flashbang_thrown },
+    { pillar: "util", key: "hedmg", label: "HE damage", dir: 1, fmt: (v) => fmt1(v),
+      hint: "damage per grenade thrown",
       value: (L) => L.avgs.he_foes_damage_avg, sample: (L) => L.sums.he_thrown },
-    { pillar: "util", key: "wasted", label: "Utility not wasted", hint: "inverse of util value held at death",
-      value: (L) => (L.avgs.utility_on_death_avg == null ? null : -L.avgs.utility_on_death_avg), sample: (L) => L.sums.rounds_count },
+    { pillar: "util", key: "wasted", label: "Utility wasted on death", dir: -1, fmt: (v) => "$" + Math.round(v),
+      hint: "value of nades still in hand when they die",
+      value: (L) => L.avgs.utility_on_death_avg, sample: (L) => L.sums.rounds_count },
 
-    { pillar: "trade", key: "tradeopp", label: "Trade situations per round", hint: "how often deaths happen near a teammate",
+    { pillar: "trade", key: "tradeopp", label: "Trade situations per round", dir: 1, fmt: fmt2,
+      hint: "how often they die within reach of a teammate",
       value: (L) => ratio(L, "traded_death_opportunities", "rounds_count"), sample: (L) => L.sums.rounds_count },
-    { pillar: "trade", key: "tradeconv", label: "Trade conversion", hint: "trades taken when offered",
+    { pillar: "trade", key: "tradeconv", label: "Trades taken", dir: 1, fmt: pc,
+      hint: "trade kills won when the chance was there",
       value: (L) => ratio(L, "trade_kills_succeed", "trade_kill_attempts"), sample: (L) => L.sums.trade_kill_attempts },
-    { pillar: "trade", key: "tradedconv", label: "Deaths that get traded", hint: "team punishing a lost duel",
+    { pillar: "trade", key: "tradedconv", label: "Deaths that get avenged", dir: 1, fmt: pc,
+      hint: "their team punishing a lost duel",
       value: (L) => ratio(L, "traded_deaths_succeed", "traded_death_attempts"), sample: (L) => L.sums.traded_death_attempts },
   ];
 
@@ -1215,9 +1522,12 @@
     };
     const out = {};
     for (const [name, sides] of Object.entries(basis)) {
-      const factors = {};
-      for (const f of FACTORS)
-        factors[f.key] = standardize(residualize(shrink(standardize(sides.map(f.value)), sides.map(f.sample)), rounds));
+      const factors = {}, raw = {};
+      for (const f of FACTORS) {
+        raw[f.key] = sides.map(f.value);
+        const signedVals = raw[f.key].map((v) => (v == null ? null : f.dir * v));
+        factors[f.key] = standardize(residualize(shrink(standardize(signedVals), sides.map(f.sample)), rounds));
+      }
       const pillars = {};
       for (const p of PILLARS) {
         const keys = FACTORS.filter((f) => f.pillar === p.key).map((f) => f.key);
@@ -1227,75 +1537,92 @@
         }));
       }
       const composite = standardize(rows.map((_, i) => mean(PILLARS.map((p) => pillars[p.key][i] || 0))));
-      out[name] = { factors, pillars, composite };
+      out[name] = { factors, raw, pillars, composite };
     }
-    rows.forEach((m, i) => { m._lobbyZ = out.lobby.composite[i]; });
-    return { rows, rounds, ...out.lobby, enemy: out.enemy };
+    // 0–100: how many of this player's own matches had a weaker server
+    const order = out.lobby.composite.map((v, i) => [v, i]).filter(([v]) => v != null)
+      .sort((a, b) => a[0] - b[0]);
+    const score = new Array(rows.length).fill(null);
+    order.forEach(([, i], rank) => { score[i] = order.length < 2 ? 50 : (rank / (order.length - 1)) * 100; });
+    rows.forEach((m, i) => { m._lobbyZ = out.lobby.composite[i]; m._lobbyScore = score[i]; });
+    return { rows, rounds, score, ...out.lobby, enemy: out.enemy };
   }
 
   function renderLobby(root, ms) {
     const model = lobbyModel(ms);
-    const s = section("Lobby quality", "How strong the server was, measured independently of whether you won it.");
+    const s = section("How hard were your lobbies?",
+      "Every match is scored 0–100 on how strong the server was — 100 being the toughest lobby in this slice, 0 the softest. " +
+      "The score is built only from how the other nine players performed, never from whether you won.");
     if (!model) {
       s.before(el("p", { class: "csub" }, "Not enough matches with full lobby detail in this slice."));
       root.append(s.sec);
       return;
     }
-    const { rows, composite } = model;
+    const { rows, score } = model;
     const wins = rows.map((m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0));
+    const idxBy = (test) => rows.map((_, i) => i).filter((i) => score[i] != null && test(score[i]));
+    const easiest = idxBy((v) => v < 25), hardest = idxBy((v) => v >= 75);
+    const wrOf = (idx) => (idx.length ? mean(idx.map((i) => wins[i])) * 100 : null);
 
-    s.before(el("div", { class: "method" },
-      el("h4", {}, "How this is built"),
-      el("ol", {},
-        el("li", {}, el("b", {}, "All nine other players, not just the enemy five. "),
-          "An enemy-only reading mostly restates your own result — beat a team and their numbers sag. " +
-          "Averaging the whole server cancels most of that, because your teammates' numbers rise at the same time."),
-        el("li", {}, el("b", {}, "Sixteen signals across three areas. "),
-          "Aim, utility use and discipline, and trade structure — a coordinated lobby shows up in how it uses grenades and trades deaths, " +
-          "not only in how fast it clicks heads."),
-        el("li", {}, el("b", {}, "Corrected for match length. "),
-          "A 13–3 is over quickly and leaves thin data, so every signal is stripped of whatever it owes to rounds played, " +
-          "then pulled toward the average in proportion to how little of it was actually measured."),
-        el("li", {}, el("b", {}, "Rating is deliberately excluded. "),
-          "Leetify rating is scored relative to the lobby, so the nine others always average out to roughly your own rating negated. " +
-          "It carries no information about how strong the server was."))));
-
-    // --- 1. distribution vs your rating ---
-    const c1 = card("Lobby quality vs your rating", "each dot is one match · the dashed line is the fitted trend", { wide: true, mark: LEETIFY_MARK });
-    scatter(c1.body, rows.map((m, i) => ({
-      x: composite[i], y: m.me.leetify_rating * 100,
-      cls: m.outcome === "win" ? "s1" : m.outcome === "loss" ? "s2" : "demph",
-      title: `${MAPLABEL(m.map_name)} · ${queueLabel(m.data_source)} · ${m.date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
-      tip: [
-        { value: `${m.score[0]}–${m.score[1]}`, label: m.outcome },
-        { value: fmtRating(m.me.leetify_rating), label: "your rating" },
-        { value: signed(composite[i], fmt2), label: "lobby quality (z)" },
-        { value: signed(model.pillars.aim[i], fmt2), label: "aim" },
-        { value: signed(model.pillars.util[i], fmt2), label: "utility" },
-        { value: signed(model.pillars.trade[i], fmt2), label: "trading" },
-      ],
-    })).filter((p) => p.x != null), {
-      xLabel: "lobby quality (z-score — right is a stronger server)", yLabel: "your Leetify rating",
-      xFmt: (v) => signed(v), yFmt: (v) => signed(v),
+    // --- headline ---
+    const gap = wrOf(easiest) - wrOf(hardest);
+    const strip = el("section", { class: "kpi-row" });
+    [
+      { label: "Softest quarter of lobbies", value: Math.round(wrOf(easiest)) + "%", sub: `winrate over ${easiest.length} games` },
+      { label: "Toughest quarter of lobbies", value: Math.round(wrOf(hardest)) + "%", sub: `winrate over ${hardest.length} games` },
+      { label: "What the difficulty costs you", value: signed(-gap) + " pts", sub: "winrate, toughest vs softest", cls: gap > 0 ? "bad" : "good" },
+    ].forEach((t) => {
+      strip.append(el("div", { class: "tile" },
+        el("div", { class: "tlabel" }, el("span", {}, t.label)),
+        el("div", { class: "tvalue" }, t.value),
+        el("div", { class: "tdelta " + (t.cls || "") }, t.sub)));
     });
-    c1.legend([{ cls: "s1", label: "Win" }, { cls: "s2", label: "Loss" }, { cls: "demph", label: "Tie" }]);
-    c1.setTable(["Date", "Map", "Queue", "Result", "Your rating", "Lobby z", "Aim", "Utility", "Trading"],
-      rows.map((m, i) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), queueLabel(m.data_source), m.outcome,
-        fmtRating(m.me.leetify_rating), signed(composite[i], fmt2), signed(model.pillars.aim[i], fmt2),
-        signed(model.pillars.util[i], fmt2), signed(model.pillars.trade[i], fmt2)]));
-    s.grid.append(c1.fig);
+    s.before(strip);
 
-    // --- 2. winrate by band ---
-    const BANDS = [
-      ["Much weaker", (z) => z < -1], ["Weaker", (z) => z >= -1 && z < -0.33],
-      ["Even", (z) => z >= -0.33 && z <= 0.33],
-      ["Stronger", (z) => z > 0.33 && z <= 1], ["Much stronger", (z) => z > 1],
-    ];
-    const bands = BANDS.map(([label, test]) => [label, rows.filter((m, i) => composite[i] != null && test(composite[i]))])
+    // --- what a hard lobby actually looks like, in real units ---
+    const meanRaw = (key, idx) => {
+      const v = idx.map((i) => model.raw[key][i]).filter((x) => x != null && isFinite(x));
+      return v.length ? mean(v) : null;
+    };
+    const c0 = card("What a tough lobby actually looks like",
+      "the real numbers the other nine players put up, in your softest quarter of games versus your toughest", { wide: true });
+    const list = el("div", { class: "deltalist" });
+    const deltas = FACTORS.map((f) => {
+      const a = meanRaw(f.key, easiest), b = meanRaw(f.key, hardest);
+      if (a == null || b == null || !a) return null;
+      const relChange = ((b - a) / Math.abs(a)) * 100;
+      return { f, a, b, relChange, better: Math.sign(b - a) === f.dir };
+    }).filter(Boolean).sort((x, y) => Math.abs(y.relChange) - Math.abs(x.relChange));
+    const widest = Math.max(...deltas.map((d) => Math.abs(d.relChange))) || 1;
+    for (const d of deltas) {
+      const bar = el("i");
+      bar.style.width = (Math.abs(d.relChange) / widest) * 100 + "%";
+      bar.style.background = d.better ? "var(--pos)" : "var(--demph)";
+      list.append(el("div", { class: "drow" },
+        el("div", { class: "dname" }, d.f.label, el("small", {}, d.f.hint)),
+        el("div", { class: "dvals" },
+          el("span", { class: "dfrom" }, d.f.fmt(d.a)),
+          el("span", { class: "darrow" }, "→"),
+          el("span", { class: "dto" + (d.better ? " up" : "") }, d.f.fmt(d.b))),
+        el("div", { class: "dbar" }, bar),
+        el("div", { class: "dpct" }, signed(d.relChange, (v) => Math.round(v) + "%"))));
+    }
+    c0.body.append(list);
+    const rightWay = deltas.filter((d) => d.better).length;
+    c0.body.append(el("p", { class: "csub" },
+      `${rightWay} of the ${deltas.length} signals move in the direction of a better team, which is the basic check that the score is ` +
+      `tracking something real. Bar length is the size of the change, not its importance — for that, see which signals actually cost you games below.`));
+    c0.setTable(["Signal", "Softest quarter", "Toughest quarter", "Change"],
+      deltas.map((d) => [d.f.label, d.f.fmt(d.a), d.f.fmt(d.b), signed(d.relChange, (v) => Math.round(v) + "%")]));
+    s.grid.append(c0.fig);
+
+    // --- winrate by difficulty band ---
+    const BANDS = [["Softest quarter", 0, 25], ["Below average", 25, 50], ["Above average", 50, 75], ["Toughest quarter", 75, 101]];
+    const bands = BANDS.map(([label, lo, hi]) => [label, rows.filter((m, i) => score[i] != null && score[i] >= lo && score[i] < hi)])
       .filter(([, a]) => a.length);
-    const c2 = card("Winrate by lobby quality", "fixed z-score bands, so the counts show the real mix of servers you land in");
+    const c2 = card("Your winrate as lobbies get harder", "matches split into four equal groups by lobby score");
     vCols(c2.body, bands.map(([label, a]) => ({
-      label, sub: `${a.length} games`, value: winrate(a) * 100, tipTitle: label + " lobbies",
+      label, sub: `${a.length} games`, value: winrate(a) * 100, tipTitle: label,
       tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
             { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "your avg rating" },
             { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "your avg K/D" }],
@@ -1305,45 +1632,52 @@
       fmt2(mean(a.map((m) => m.me.kd_ratio)))]));
     s.grid.append(c2.fig);
 
-    // --- 3. the three pillars ---
+    // --- scatter ---
+    const c1 = card("Every match, plotted", "lobby score across the bottom, how well you played up the side", { wide: true, mark: LEETIFY_MARK });
+    scatter(c1.body, rows.map((m, i) => ({
+      x: score[i], y: m.me.leetify_rating * 100,
+      cls: m.outcome === "win" ? "s1" : m.outcome === "loss" ? "s2" : "demph",
+      title: `${MAPLABEL(m.map_name)} · ${queueLabel(m.data_source)} · ${m.date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
+      tip: [
+        { value: `${m.score[0]}–${m.score[1]}`, label: m.outcome },
+        { value: fmtRating(m.me.leetify_rating), label: "your rating" },
+        { value: Math.round(score[i]) + " / 100", label: "lobby score" },
+        { value: (m.party || []).length ? (m.party || []).map(playerName).join(", ") : "solo queue", label: "" },
+      ],
+    })).filter((p) => p.x != null), {
+      xLabel: "lobby score — 0 is the softest server in this slice, 100 the toughest",
+      yLabel: "your Leetify rating", xFmt: (v) => Math.round(v) + "", yFmt: (v) => signed(v),
+    });
+    c1.legend([{ cls: "s1", label: "Win" }, { cls: "s2", label: "Loss" }, { cls: "demph", label: "Tie" }]);
+    c1.setTable(["Date", "Map", "Queue", "Result", "Your rating", "Lobby score", "Aim", "Utility", "Trading"],
+      rows.map((m, i) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), queueLabel(m.data_source), m.outcome,
+        fmtRating(m.me.leetify_rating), score[i] == null ? "–" : Math.round(score[i]), signed(model.pillars.aim[i], fmt2),
+        signed(model.pillars.util[i], fmt2), signed(model.pillars.trade[i], fmt2)]));
+    s.grid.append(c1.fig);
+
+    // --- which signals actually bite ---
     const terc = (vals) => {
       const idx = vals.map((v, i) => [v, i]).filter(([v]) => v != null).sort((a, b) => a[0] - b[0]).map(([, i]) => i);
       const k = Math.floor(idx.length / 3);
       return [idx.slice(0, k), idx.slice(-k)];
     };
-    const c3 = card("Which part of the lobby costs you games", "winrate in the weakest third of matches on each measure, versus the strongest third");
-    const pillarRows = PILLARS.map((p) => {
-      const [lo, hi] = terc(model.pillars[p.key]);
-      return { label: p.label, a: mean(lo.map((i) => wins[i])) * 100, b: mean(hi.map((i) => wins[i])) * 100 };
-    });
-    const [clo, chi] = terc(composite);
-    pillarRows.push({ label: "All three combined", a: mean(clo.map((i) => wins[i])) * 100, b: mean(chi.map((i) => wins[i])) * 100 });
-    pairedBars(c3.body, pillarRows, [{ cls: "pos", label: "vs weakest third" }, { cls: "neg", label: "vs strongest third" }],
-      { fmt: (v) => Math.round(v) + "%" });
-    c3.legend([{ cls: "pos", label: "Winrate vs weakest third" }, { cls: "neg", label: "Winrate vs strongest third" }]);
-    c3.setTable(["Measure", "Winrate vs weakest third", "Winrate vs strongest third", "Gap"],
-      pillarRows.map((r) => [r.label, fmt1(r.a) + "%", fmt1(r.b) + "%", signed(r.a - r.b) + " pts"]));
-    s.grid.append(c3.fig);
-
-    // --- 4. per-signal audit ---
-    const c4 = card("Does each signal earn its place?", `winrate gap between the weakest and strongest third of lobbies on that signal, over ${rows.length} matches`);
+    const c4 = card("Which signals actually cost you games",
+      `how many points of winrate you lose between the softest and toughest third of lobbies on each signal, over ${rows.length} matches`);
     const audit = FACTORS.map((f) => {
       const [lo, hi] = terc(model.factors[f.key]);
       if (!lo.length || !hi.length) return null;
-      const gap = (mean(lo.map((i) => wins[i])) - mean(hi.map((i) => wins[i]))) * 100;
-      return {
-        label: f.label, value: gap, faded: gap <= 0,
-        tipTitle: f.label,
-        tip: [{ value: signed(gap) + " pts", label: "winrate gap" },
+      const g = (mean(lo.map((i) => wins[i])) - mean(hi.map((i) => wins[i]))) * 100;
+      return { label: f.label, value: g, faded: g <= 0, tipTitle: f.label,
+        tip: [{ value: signed(g) + " pts", label: "winrate lost" },
               { value: PILLARS.find((p) => p.key === f.pillar).label, label: "" },
-              { value: f.hint, label: "" }],
-      };
+              { value: f.hint, label: "" }] };
     }).filter(Boolean).sort((a, b) => b.value - a.value);
-    hBars(c4.body, audit, { fmt: (v) => signed(v) + " pts", diverging: true, labelW: 210 });
+    hBars(c4.body, audit, { fmt: (v) => signed(v) + " pts", diverging: true, labelW: 230 });
     c4.body.append(el("p", { class: "csub" },
-      "Positive means you win more when that signal is low. Faded bars point the wrong way — those signals describe the lobby " +
-      "but do not make it harder for you, which is exactly why the composite spreads its weight across all sixteen."));
-    c4.setTable(["Signal", "Area", "Winrate vs weakest third", "Winrate vs strongest third", "Gap"],
+      "Faded bars are signals that describe the lobby but do not actually make it harder for you — pure aim stats mostly sit there. " +
+      "They stay in the score at low weight rather than being quietly dropped, because picking signals by what already fits your results " +
+      "would flatter the model."));
+    c4.setTable(["Signal", "Area", "Winrate in softest third", "Winrate in toughest third", "Difference"],
       FACTORS.map((f) => {
         const [lo, hi] = terc(model.factors[f.key]);
         if (!lo.length || !hi.length) return [f.label, f.pillar, "–", "–", "–"];
@@ -1353,43 +1687,47 @@
       }));
     s.grid.append(c4.fig);
 
-    // --- 5. why the whole server, not the enemy team ---
-    const c5 = card("Why measure the whole server", "how much each reading just restates your own result — lower is better");
-    const basisRows = [...PILLARS.map((p) => ({
-      label: p.label,
-      a: Math.abs(corr(model.enemy.pillars[p.key], wins) || 0),
-      b: Math.abs(corr(model.pillars[p.key], wins) || 0),
-    })), {
-      label: "Combined score",
-      a: Math.abs(corr(model.enemy.composite, wins) || 0),
-      b: Math.abs(corr(composite, wins) || 0),
-    }];
-    pairedBars(c5.body, basisRows, [{ cls: "neg", label: "enemy team only" }, { cls: "pos", label: "all nine others" }]);
-    c5.legend([{ cls: "neg", label: "Enemy team only" }, { cls: "pos", label: "All nine others" }]);
-    c5.body.append(el("p", { class: "csub" },
-      "Correlation with your own win/loss, absolute value. A difficulty measure that tracks your result this closely is not measuring difficulty."));
-    c5.setTable(["Measure", "Enemy team only |r|", "All nine others |r|"],
-      basisRows.map((r) => [r.label, fmt2(r.a), fmt2(r.b)]));
-    s.grid.append(c5.fig);
-
-    // --- 6. sanity check across queues ---
+    // --- queue sanity check ---
     if (state.queue === "all") {
-      const qs = [...groupBy(rows.filter((m, i) => composite[i] != null), (m) => m.data_source)]
+      const qs = [...groupBy(rows.filter((m, i) => score[i] != null), (m) => m.data_source)]
         .filter(([, a]) => a.length >= 5)
-        .map(([q, a]) => [q, a, mean(a.map((m) => m._lobbyZ))])
+        .map(([q, a]) => [q, a, mean(a.map((m) => m._lobbyScore))])
         .sort((a, b) => b[2] - a[2]);
       if (qs.length >= 2) {
-        const c6 = card("Sanity check: lobby quality by queue", "the score is never told which queue a match came from — it should still rank them");
+        const c6 = card("Sanity check: does it rank the queues right?", "the score never sees which queue a match came from");
         vCols(c6.body, qs.map(([q, a, z]) => ({
           label: queueLabel(q), sub: `${a.length} games`, mark: queueMark(q), value: z, tipTitle: queueLabel(q),
-          tip: [{ value: signed(z, fmt2), label: "avg lobby quality (z)" },
+          tip: [{ value: Math.round(z) + " / 100", label: "average lobby score" },
                 { value: fmt1(winrate(a) * 100) + "%", label: "your winrate there" }],
-        })), { fmt: (v) => signed(v, fmt2), diverging: true });
-        c6.setTable(["Queue", "Matches", "Avg lobby quality", "Your winrate"], qs.map(([q, a, z]) => [
-          queueLabel(q), a.length, signed(z, fmt2), fmt1(winrate(a) * 100) + "%"]));
+        })), { fmt: (v) => Math.round(v) + "" });
+        c6.setTable(["Queue", "Matches", "Average lobby score", "Your winrate"], qs.map(([q, a, z]) => [
+          queueLabel(q), a.length, Math.round(z) + " / 100", fmt1(winrate(a) * 100) + "%"]));
         s.grid.append(c6.fig);
       }
     }
+
+    // --- method, folded away ---
+    const enemyR = Math.abs(corr(model.enemy.composite, wins) || 0);
+    const lobbyR = Math.abs(corr(model.composite, wins) || 0);
+    const details = el("details", { class: "method" },
+      el("summary", {}, "How the score is built, and why it is built that way"),
+      el("ol", {},
+        el("li", {}, el("b", {}, "It watches all nine other players, not just the five enemies. "),
+          `Judging a lobby by the enemy team alone mostly measures your own result — beat a team and their numbers sag. ` +
+          `On this archive an enemy-only score tracks your win/loss at r = ${fmt2(enemyR)}; using the whole server drops that to ${fmt2(lobbyR)}, ` +
+          `because your teammates' numbers rise at the same moment the enemy's fall.`),
+        el("li", {}, el("b", {}, "Sixteen signals, three areas. "),
+          "Aim and mechanics, utility use and discipline, trade structure. A well-drilled lobby shows up in how it spends grenades and trades deaths, " +
+          "not only in how fast it clicks heads — the chart above shows which of those actually bite."),
+        el("li", {}, el("b", {}, "Short games are not mistaken for soft ones. "),
+          "A 13–3 ends quickly and leaves thin data. Every signal has the effect of match length stripped out of it, then gets pulled toward " +
+          "the average in proportion to how little of it was measured, so a fast stomp lands near the middle rather than at an extreme."),
+        el("li", {}, el("b", {}, "Leetify rating is deliberately not used. "),
+          "It is scored relative to the lobby, so the nine others always average to roughly your own rating negated. It says nothing about server strength."),
+        el("li", {}, el("b", {}, "The 0–100 is relative to you. "),
+          "It ranks this slice of your own matches against each other, so 50 means a typical lobby for you — not a fixed skill level. " +
+          "Change the filters and the scale re-forms around whatever is in view.")));
+    s.before(details);
     root.append(s.sec);
   }
 
