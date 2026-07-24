@@ -1,0 +1,90 @@
+[
+ {
+  "date": "2026-07-24",
+  "name": "Fat Tony",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 9
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 10
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 7
+    },
+    {
+     "map_name": "de_train",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 9
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 9
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 0
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 6
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 0
+    }
+   ],
+   "faceit": 7,
+   "faceit_elo": 1226,
+   "leetify": -1.46,
+   "premier": null,
+   "renown": null,
+   "wingman": null
+  },
+  "rating": {
+   "aim": 69.8468,
+   "clutch": 0.0954,
+   "ct_leetify": -0.0124,
+   "opening": -0.0137,
+   "positioning": 51.5953,
+   "t_leetify": -0.0168,
+   "utility": 57.208
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 37.9698,
+   "accuracy_head": 12.6204,
+   "counter_strafing_good_shots_ratio": 87.5624,
+   "ct_opening_aggression_success_rate": 21.341,
+   "ct_opening_duel_success_percentage": 43.3335,
+   "flashbang_hit_foe_avg_duration": 2.5376,
+   "flashbang_hit_foe_per_flashbang": 0.5289,
+   "flashbang_hit_friend_per_flashbang": 0.4575,
+   "flashbang_leading_to_kill": 6.2449,
+   "flashbang_thrown": 7.3744,
+   "he_foes_damage_avg": 9.6865,
+   "he_friends_damage_avg": 0.3871,
+   "preaim": 12.2191,
+   "reaction_time_ms": 650.2,
+   "spray_accuracy": 42.1369,
+   "t_opening_aggression_success_rate": 25.4134,
+   "t_opening_duel_success_percentage": 26.3157,
+   "trade_kill_opportunities_per_round": 0.4255,
+   "trade_kills_success_percentage": 43.6698,
+   "traded_deaths_success_percentage": 55.1197,
+   "utility_on_death_avg": 384.406
+  },
+  "total_matches": 478,
+  "winrate": 0.5172
+ }
+]

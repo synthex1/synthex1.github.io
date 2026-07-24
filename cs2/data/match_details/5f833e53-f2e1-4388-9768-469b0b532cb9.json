@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-8481f873-8d6b-40ef-9dac-fef60e95541f",
+ "finished_at": "2020-05-07T04:53:41.000Z",
+ "has_banned_player": false,
+ "id": "5f833e53-f2e1-4388-9768-469b0b532cb9",
+ "map_name": "de_train",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 2,
+   "team_number": 2
+  },
+  {
+   "score": 0,
+   "team_number": 3
+  }
+ ]
+}

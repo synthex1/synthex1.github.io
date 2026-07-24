@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-49ba1793-c08b-4d3b-b5de-2fa348edd733",
+ "finished_at": "2021-03-03T01:55:43.000Z",
+ "has_banned_player": false,
+ "id": "07edf5ae-755a-409f-9f4f-a5afbb74bb08",
+ "map_name": "de_mirage",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 16,
+   "team_number": 2
+  },
+  {
+   "score": 12,
+   "team_number": 3
+  }
+ ]
+}

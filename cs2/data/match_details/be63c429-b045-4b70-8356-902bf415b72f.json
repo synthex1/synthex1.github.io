@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-f5adeadb-0172-4079-8b21-9f1da1436ba0",
+ "finished_at": "2019-09-14T17:38:52.000Z",
+ "has_banned_player": false,
+ "id": "be63c429-b045-4b70-8356-902bf415b72f",
+ "map_name": "de_dust2",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 0,
+   "team_number": 2
+  },
+  {
+   "score": 0,
+   "team_number": 3
+  }
+ ]
+}

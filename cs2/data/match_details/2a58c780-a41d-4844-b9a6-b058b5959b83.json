@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-13089d7f-ba5c-4ac2-8777-3fdabbda292c",
+ "finished_at": "2022-02-07T03:43:49.000Z",
+ "has_banned_player": false,
+ "id": "2a58c780-a41d-4844-b9a6-b058b5959b83",
+ "map_name": "de_ancient",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 16,
+   "team_number": 2
+  },
+  {
+   "score": 5,
+   "team_number": 3
+  }
+ ]
+}
