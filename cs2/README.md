@@ -47,10 +47,18 @@ off the full lobby detail. That drives the "Who you queue with" section (solo
 vs grouped, party size, and each metric with versus without a given player) and
 the "Queued with" filter, which re-slices the whole dashboard.
 
-The dashboard's Compare view loads every roster archive at once and puts the
-players side by side under the same date and queue filters, with an option to
-restrict to lobbies more than one of them was in — the same games, so the
-comparison is like for like.
+The roster buttons are **multi-select**. The first name picks whose own stats
+the page shows; each extra name narrows every section to the lobbies those
+players shared. Clicking the leading name drops it and hands the lead to the
+next selection. With two or more selected, a **Head to head** section scores
+each of them over exactly those shared games — same lobbies, same opponents,
+same rounds, so the differences are between the players rather than between
+the games they happened to get. It also counts how often each of them finished
+top of the group.
+
+The separate **Compare** view loads every roster archive at once and ranks the
+players under the same date and queue filters, with an option to restrict to
+lobbies more than one of them was in.
 
 Note the API only serves each player's **last 100 matches**, so a newly added
 player starts at 100 and grows from there. `scripts/backfill_faceit.py` reaches

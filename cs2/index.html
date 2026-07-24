@@ -88,6 +88,13 @@
   }
   .filters button.opt[aria-pressed="true"] { background: var(--series-1); color: #fff; }
   .filters button.opt:not([aria-pressed="true"]):hover { color: var(--ink-1); }
+  /* co-selected players sit behind the one whose stats are actually shown */
+  #playerSeg button.opt[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--series-1) 30%, var(--surface-1)); color: var(--ink-1);
+  }
+  #playerSeg button.opt.lead[aria-pressed="true"] { background: var(--series-1); color: #fff; }
+  .tbtn[aria-pressed="true"] { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+  .datatable td.lead { color: var(--ink-1); font-weight: 650; }
   .filters .flabel { font-size: 13px; color: var(--ink-muted); margin-left: 6px; }
   .pwrap { display: inline-flex; align-items: center; gap: 8px; }
   .psel {
@@ -449,10 +456,15 @@
     { id: "90", label: "Last 90 days", days: 90 },
     { id: "30", label: "Last 30 days", days: 30 },
   ];
+  // `players` is the roster selection in click order: [0] is the player whose
+  // own stats are shown, the rest narrow the view to lobbies they all shared.
   const state = {
-    range: "all", queue: "all", player: PLAYERS[0].steam64_id,
+    range: "all", queue: "all", players: [PLAYERS[0].steam64_id],
     view: "player", party: "any", compareMetric: "winrate", compareShared: false,
+    h2hMetric: "rating",
   };
+  const primary = () => state.players[0];
+  const others = () => state.players.slice(1);
   const playerName = (id) => {
     const p = ALL_PLAYERS.find((x) => x.steam64_id === id);
     // a tracked player whose Leetify profile is private has no name to show,
@@ -905,14 +917,6 @@
     });
   }
 
-  async function switchPlayer(option) {
-    const entry = PLAYERS.find((p) => p.steam64_id === option.id) || PLAYERS[0];
-    const root = $("sections");
-    root.style.opacity = "0.45";   // hold previous render while refetching
-    if (await loadPlayer(entry)) renderAll();
-    root.style.opacity = "";
-  }
-
   // ---------- derived helpers ----------
   const rolling = (arr, w, acc) => arr.map((_, i) => {
     const lo = Math.max(0, i - w + 1);
@@ -932,10 +936,11 @@
   }
 
   function partyOk(m) {
-    if (state.party === "any") return true;
     const party = m.party || [];
-    if (state.party === "solo") return party.length === 0;
-    return party.includes(state.party);
+    // every co-selected player has to have been in the lobby
+    if (!others().every((id) => party.includes(id))) return false;
+    if (state.party === "solo" && state.players.length === 1) return party.length === 0;
+    return true;
   }
   function filtered(matches = MATCHES, { party = true } = {}) {
     const r = RANGES.find((x) => x.id === state.range);
@@ -964,64 +969,98 @@
 
   // ---------- render ----------
   function renderAll() {
-    const solo = state.view === "player";
-    const pseg = $("playerSeg");
-    if (PLAYERS.length > 1)
-      segButtons(pseg, PLAYERS.map((p) => ({ id: p.steam64_id, label: p.name || p.steam64_id })), "player", switchPlayer);
-    else pseg.hidden = true;
-    pseg.hidden = PLAYERS.length <= 1 || !solo;
+    const inPlayerView = state.view === "player";
+    renderRoster();
+    $("playerSeg").hidden = PLAYERS.length <= 1 || !inPlayerView;
     segButtons($("rangeSeg"), RANGES, "range");
     segButtons($("queueSeg"), QUEUES, "queue");
     if (PLAYERS.length > 1)
       segButtons($("viewSeg"), [{ id: "player", label: "One player" }, { id: "compare", label: "Compare" }], "view", switchView);
     else $("viewSeg").hidden = true;
-    renderPartySelect();
+    renderSoloToggle();
     $("filters").hidden = false;
     $("status").hidden = true;
 
     const root = $("sections");
     root.replaceChildren();
-    if (!solo) { renderCompare(root); return; }
+    if (!inPlayerView) { renderCompare(root); return; }
 
     const ms = filtered();
-    $("filterNote").textContent = `${ms.length} matches in view`;
-    renderKpis(ms);
+    const who = others().length
+      ? `${ms.length} lobbies shared by ${[primary(), ...others()].map(playerName).join(", ")} · showing ${playerName(primary())}'s stats`
+      : `${ms.length} matches in view`;
+    $("filterNote").textContent = who;
     if (!ms.length) {
       $("kpis").replaceChildren();
-      root.append(el("p", { class: "csub" }, "No matches match the current filters."));
+      root.append(el("p", { class: "csub" },
+        others().length
+          ? "These players have no archived lobby in common under the current filters."
+          : "No matches match the current filters."));
       return;
     }
+    renderKpis(ms);
 
+    if (others().length) renderHeadToHead(root, ms);
     renderForm(root, ms);
     renderMaps(root, ms);
     renderQueues(root, ms);
     renderMechanics(root, ms);
     renderSessions(root, ms);
-    renderSquad(root);
+    if (!others().length) renderSquad(root);
     renderLobby(root, ms);
   }
 
-  function renderPartySelect() {
+  // roster buttons are multi-select: the first click picks whose stats are
+  // shown, further clicks narrow to lobbies those players shared
+  function renderRoster() {
+    const node = $("playerSeg");
+    node.replaceChildren();
+    if (PLAYERS.length <= 1) return;
+    PLAYERS.forEach((p) => {
+      const idx = state.players.indexOf(p.steam64_id);
+      const b = el("button", {
+        class: "opt" + (idx === 0 ? " lead" : ""),
+        "aria-pressed": String(idx >= 0),
+        title: idx === 0 ? "Stats shown are this player's — click another name to narrow to lobbies you shared"
+                         : idx > 0 ? "Click to remove from the selection" : "Click to add: shows only lobbies you both played",
+        onclick: () => togglePlayer(p.steam64_id),
+      }, p.name || p.steam64_id);
+      node.append(b);
+    });
+  }
+
+  async function togglePlayer(id) {
+    const idx = state.players.indexOf(id);
+    if (idx === 0) {
+      if (state.players.length === 1) return;      // the primary alone stays put
+      state.players = [state.players[1], ...state.players.slice(2)];  // hand over the lead
+    } else if (idx > 0) {
+      state.players.splice(idx, 1);
+    } else {
+      state.players.push(id);
+    }
+    const root = $("sections");
+    root.style.opacity = "0.45";
+    const entries = state.players.map((pid) => PLAYERS.find((p) => p.steam64_id === pid)).filter(Boolean);
+    await Promise.all(entries.map((e) => fetchArchive(e).catch(() => null)));
+    if (await loadPlayer(entries[0])) renderAll();
+    root.style.opacity = "";
+  }
+
+  function renderSoloToggle() {
     const wrap = $("partyWrap");
     wrap.replaceChildren();
-    const mates = partyMates(MATCHES);
-    if (state.view !== "player" || !mates.length) { wrap.hidden = true; return; }
-    wrap.hidden = false;
-    const solo = MATCHES.filter((m) => (m.party || []).length === 0).length;
-    const opts = [
-      { id: "any", label: `Anyone (${MATCHES.length})` },
-      ...(solo ? [{ id: "solo", label: `Without the group (${solo})` }] : []),
-      ...mates.map(([id, n]) => ({ id, label: `With ${playerName(id)} (${n})` })),
-    ];
-    if (!opts.some((o) => o.id === state.party)) state.party = "any";
-    const sel = el("select", { class: "psel", "aria-label": "Queued with",
-      onchange: (e) => { state.party = e.target.value; renderAll(); } });
-    for (const o of opts) {
-      const opt = el("option", { value: o.id }, o.label);
-      if (o.id === state.party) opt.selected = true;
-      sel.append(opt);
+    const soloGames = MATCHES.filter((m) => !(m.party || []).length).length;
+    if (state.view !== "player" || state.players.length > 1 || !soloGames || soloGames === MATCHES.length) {
+      wrap.hidden = true;
+      if (state.party === "solo" && state.players.length > 1) state.party = "any";
+      return;
     }
-    wrap.append(el("span", { class: "flabel" }, "Queued with"), sel);
+    wrap.hidden = false;
+    wrap.append(el("button", {
+      class: "tbtn", "aria-pressed": String(state.party === "solo"),
+      onclick: () => { state.party = state.party === "solo" ? "any" : "solo"; renderAll(); },
+    }, state.party === "solo" ? `Solo games only (${soloGames})` : `Solo games only`));
   }
 
   async function switchView(option) {
@@ -1324,6 +1363,116 @@
     s.before(el("p", { class: "csub" },
       "Read these as association, not cause. You play different queues and different nights with different people, and a 30-game split " +
       "swings by several points on luck alone."));
+    root.append(s.sec);
+  }
+
+  // ---------- head to head, inside the shared lobbies ----------
+  // Same games, same opponents, same rounds — the only comparison between two
+  // players that isn't confounded by them playing different lobbies.
+  function renderHeadToHead(root, ms) {
+    const ids = [primary(), ...others()];
+    const sharedIds = new Set(ms.map((m) => m.id));
+    const cols = ids.map((id) => {
+      const rec = ARCHIVES.get(id);
+      const rows = rec ? rec.matches.filter((m) => sharedIds.has(m.id)) : [];
+      return { id, name: playerName(id), rows };
+    }).filter((c) => c.rows.length);
+    if (cols.length < 2) {
+      const s = section("Head to head", "Could not line these players up on the same matches — one of their archives is missing these games.");
+      root.append(s.sec);
+      return;
+    }
+    const covered = Math.min(...cols.map((c) => c.rows.length));
+    const s = section("Head to head",
+      `The ${covered} lobbies these players shared, scored per player. Same games, same opponents, same rounds — ` +
+      `so the differences are between the players, not between the games they happened to get.`);
+
+    // shared team result, stated once: it is identical for everyone on the team
+    const w = ms.filter((m) => m.outcome === "win").length;
+    const l = ms.filter((m) => m.outcome === "loss").length;
+    s.before(el("p", { class: "csub" },
+      `Together they are ${w}–${l}${ms.length - w - l ? `–${ms.length - w - l}` : ""} (${fmt1(winrate(ms) * 100)}% winrate). ` +
+      `Winrate is a team result, so it is the same for all of them — only the individual numbers below differ.`));
+
+    const indiv = METRICS.filter((m) => m.id !== "winrate");
+    const controls = el("div", { class: "cmpbar" });
+    const sel = el("select", { class: "psel", "aria-label": "Metric",
+      onchange: (e) => { state.h2hMetric = e.target.value; renderAll(); } });
+    for (const m of indiv) {
+      const o = el("option", { value: m.id }, m.label);
+      if (m.id === state.h2hMetric) o.selected = true;
+      sel.append(o);
+    }
+    controls.append(el("span", { class: "flabel" }, "Metric"), sel);
+    s.before(controls);
+    if (!indiv.some((m) => m.id === state.h2hMetric)) state.h2hMetric = "rating";
+
+    const met = indiv.find((m) => m.id === state.h2hMetric) || indiv[0];
+    const c1 = card(met.label + " in these games", "each player measured only on the lobbies they all played",
+      { mark: met.id === "rating" ? LEETIFY_MARK : null });
+    const vals = cols.map((c) => ({ ...c, v: met.acc(c.rows) })).filter((c) => c.v != null)
+      .sort((a, b) => (met.good > 0 ? b.v - a.v : a.v - b.v));
+    const floor = met.diverging ? 0 : Math.min(...vals.map((v) => v.v)) * 0.85;
+    hBars(c1.body, vals.map((c) => ({
+      label: c.name, value: met.diverging ? c.v : c.v - floor,
+      cls: c.id === primary() ? "s1" : "demph",
+      tipTitle: c.name,
+      tip: [{ value: met.fmt(c.v), label: met.label.toLowerCase() },
+            { value: String(c.rows.length), label: "shared games" }],
+    })), { fmt: (v) => met.fmt(met.diverging ? v : v + floor), diverging: !!met.diverging, labelW: 190 });
+    if (!met.diverging) c1.body.append(el("p", { class: "csub" },
+      "Bars start below the lowest value so the gaps are visible — read the labels, not the lengths."));
+    c1.setTable(["Player", "Shared games", met.label], vals.map((c) => [c.name, c.rows.length, met.fmt(c.v)]));
+    s.grid.append(c1.fig);
+
+    // how often each of them was the best of the group on the night
+    const byId = new Map(cols.map((c) => [c.id, new Map(c.rows.map((m) => [m.id, m]))]));
+    const tally = new Map(cols.map((c) => [c.id, 0]));
+    let judged = 0;
+    for (const m of ms) {
+      const scored = cols.map((c) => ({ id: c.id, r: (byId.get(c.id).get(m.id) || {}).me }))
+        .filter((x) => x.r && x.r.leetify_rating != null);
+      if (scored.length < 2) continue;
+      judged++;
+      const best = scored.reduce((a, b) => (b.r.leetify_rating > a.r.leetify_rating ? b : a));
+      tally.set(best.id, tally.get(best.id) + 1);
+    }
+    if (judged >= 5) {
+      const c3 = card("Who topped the group", `highest Leetify rating of the selected players, counted over ${judged} shared games`);
+      hBars(c3.body, cols.map((c) => ({
+        label: c.name, value: (tally.get(c.id) / judged) * 100, cls: c.id === primary() ? "s1" : "demph",
+        tipTitle: c.name,
+        tip: [{ value: `${tally.get(c.id)} of ${judged}`, label: "games topped" },
+              { value: fmt1((tally.get(c.id) / judged) * 100) + "%", label: "share" }],
+      })).sort((a, b) => b.value - a.value), { fmt: (v) => Math.round(v) + "%", max: 100, labelW: 190 });
+      c3.setTable(["Player", "Games topped", "Share"], cols.map((c) => [
+        c.name, `${tally.get(c.id)} of ${judged}`, fmt1((tally.get(c.id) / judged) * 100) + "%"]));
+      s.grid.append(c3.fig);
+    }
+
+    // who contributes what, across every metric at once
+    const c2 = card("Every metric, same lobbies", "the leader in each row is highlighted", { wide: true });
+    const table = el("table");
+    const hr = el("tr");
+    ["Metric", ...cols.map((c) => c.name + (c.id === primary() ? " ★" : ""))].forEach((h) => hr.append(el("th", {}, h)));
+    table.append(el("thead", {}, hr));
+    const tb = el("tbody");
+    for (const m of indiv) {
+      const tr = el("tr");
+      tr.append(el("td", {}, m.label));
+      const raw = cols.map((c) => m.acc(c.rows));
+      const best = raw.reduce((b, v) => (v == null ? b : b == null ? v : (m.good > 0 ? Math.max(b, v) : Math.min(b, v))), null);
+      raw.forEach((v) => {
+        const td = el("td", {}, v == null ? "–" : m.fmt(v));
+        if (v != null && v === best) td.className = "lead";
+        tr.append(td);
+      });
+      tb.append(tr);
+    }
+    table.append(tb);
+    c2.body.append(el("div", { class: "datatable open" }, table));
+    c2.body.append(el("p", { class: "csub" }, "★ marks the player whose stats drive the rest of the page."));
+    s.grid.append(c2.fig);
     root.append(s.sec);
   }
 
