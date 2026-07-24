@@ -141,6 +141,7 @@ def build_record(steam_id, summary, detail):
         "id": summary["id"],
         "finished_at": summary["finished_at"],
         "data_source": summary.get("data_source"),
+        "data_source_match_id": summary.get("data_source_match_id"),
         "map_name": summary.get("map_name"),
         "has_banned_player": summary.get("has_banned_player"),
         "score": [my_score, opp_score],
