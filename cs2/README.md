@@ -39,10 +39,29 @@ dashboard at [`/cs2/`](https://synthex1.github.io/cs2/) reads the archived JSON.
 - `cs2/index.html` — the dashboard (plain HTML/SVG, no dependencies). Map, queue
   and Leetify marks are inline SVG drawn for this page, not official artwork.
 
+## Players, parties and comparison
+
+`cs2/data/players.json` is the tracked roster. Every archived match records a
+`party` list: which *other* tracked players were on that player's team, read
+off the full lobby detail. That drives the "Who you queue with" section (solo
+vs grouped, party size, and each metric with versus without a given player) and
+the "Queued with" filter, which re-slices the whole dashboard.
+
+The dashboard's Compare view loads every roster archive at once and puts the
+players side by side under the same date and queue filters, with an option to
+restrict to lobbies more than one of them was in — the same games, so the
+comparison is like for like.
+
+Note the API only serves each player's **last 100 matches**, so a newly added
+player starts at 100 and grows from there. `scripts/backfill_faceit.py` reaches
+further back for Faceit matches, but needs `FACEIT_API_KEY`.
+
 ## Lobby quality
 
 The dashboard scores how strong each server was, independently of whether the
-match was won. Three things make it behave:
+match was won, and shows it as a 0–100 rank against that player's own matches
+in view (50 is a typical lobby for them, not a fixed skill level). Three things
+make it behave:
 
 - **It reads all nine other players, not the enemy five.** Measured over this
   archive, enemy-only averages are mostly a restatement of the result — enemy
