@@ -123,15 +123,18 @@ def backfill_player(entry, known):
     todo = [mid for mid in history if mid not in known]
     print(f"{name}: {len(history)} faceit matches in history, {len(todo)} to look up")
 
-    added = missing = 0
+    added = missing = failed = 0
     for i, mid in enumerate(todo, 1):
         try:
             detail = api_get("/v2/matches/faceit/" + mid)
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 missing += 1
-                continue
-            raise
+            else:
+                # some historical matches persistently error on Leetify's side
+                print(f"  lookup failed for {mid}: HTTP {e.code}, skipping")
+                failed += 1
+            continue
         finally:
             time.sleep(LEETIFY_REQUEST_DELAY_S)
         known.add(mid)
@@ -164,7 +167,7 @@ def backfill_player(entry, known):
     archive.sort(key=lambda m: m["finished_at"])
     save_json(matches_path, archive)
     print(f"{name}: +{added} matches (archive now {len(archive)}), "
-          f"{missing} not in Leetify")
+          f"{missing} not in Leetify, {failed} lookup failures")
 
 
 _DETAIL_INDEX = None
