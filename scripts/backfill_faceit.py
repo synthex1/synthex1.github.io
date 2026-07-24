@@ -126,14 +126,18 @@ def backfill_player(entry, known):
     added = missing = failed = 0
     for i, mid in enumerate(todo, 1):
         try:
-            detail = api_get("/v2/matches/faceit/" + mid)
+            # retries=0: the lookup endpoint answers 500 (not 404) for matches
+            # Leetify never processed, so retrying unknown ids just burns time
+            detail = api_get("/v2/matches/faceit/" + mid, retries=0)
         except urllib.error.HTTPError as e:
-            if e.code == 404:
+            if e.code in (404, 500):
                 missing += 1
             else:
-                # some historical matches persistently error on Leetify's side
                 print(f"  lookup failed for {mid}: HTTP {e.code}, skipping")
                 failed += 1
+            continue
+        except urllib.error.URLError:
+            failed += 1
             continue
         finally:
             time.sleep(LEETIFY_REQUEST_DELAY_S)
