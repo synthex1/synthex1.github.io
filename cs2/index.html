@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CS2 performance — synthex</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --ink-1: #0b0b0b;
+    --ink-2: #52514e;
+    --ink-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;   /* blue  — primary / win */
+    --series-2: #eb6834;   /* orange — loss */
+    --pos: #2a78d6;        /* diverging pole: above baseline */
+    --neg: #e34948;        /* diverging pole: below baseline */
+    --demph: #c3c2b7;      /* de-emphasis / tie */
+    --up-good: #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --ink-1: #ffffff;
+      --ink-2: #c3c2b7;
+      --ink-muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --pos: #3987e5;
+      --neg: #e66767;
+      --demph: #52514e;
+      --up-good: #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --ink-1: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --pos: #3987e5;
+    --neg: #e66767;
+    --demph: #52514e;
+    --up-good: #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  body.viz-root {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink-1);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 24px 20px 64px; }
+  header h1 { font-size: 22px; font-weight: 650; margin: 0; }
+  header .sub { color: var(--ink-2); margin: 4px 0 0; font-size: 14px; }
+
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin: 20px 0 16px;
+  }
+  .filters .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-1); }
+  .filters button.opt {
+    appearance: none; border: 0; background: transparent; color: var(--ink-2);
+    font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
+  }
+  .filters button.opt[aria-pressed="true"] { background: var(--series-1); color: #fff; }
+  .filters button.opt:not([aria-pressed="true"]):hover { color: var(--ink-1); }
+  .filters .flabel { font-size: 12px; color: var(--ink-muted); margin-left: 8px; }
+
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin-bottom: 16px;
+  }
+  .tile {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .tile .tlabel { font-size: 12px; color: var(--ink-muted); }
+  .tile .tvalue { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  .tile .tdelta { font-size: 12px; margin-top: 2px; color: var(--ink-2); }
+  .tile .tdelta.good { color: var(--up-good); }
+  .tile .tdelta.bad { color: var(--neg); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+  figure.card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; margin: 0; padding: 14px 16px 12px; min-width: 0;
+  }
+  figure.card.wide { grid-column: 1 / -1; }
+  .card-head { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: start; }
+  .card-head h2 { font-size: 14px; font-weight: 650; margin: 0; }
+  .card-head .csub { font-size: 12px; color: var(--ink-muted); grid-column: 1 / -1; }
+  .tbtn {
+    appearance: none; border: 1px solid var(--border); background: transparent;
+    color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 11px;
+    padding: 2px 8px; cursor: pointer;
+  }
+  .tbtn:hover { color: var(--ink-1); }
+  .cbody { margin-top: 8px; }
+  .cbody svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); margin-top: 6px; flex-wrap: wrap; }
+  .legend .key { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; }
+  .legend .linekey { width: 14px; height: 2px; border-radius: 1px; }
+
+  .datatable { display: none; overflow-x: auto; margin-top: 8px; }
+  .datatable.open { display: block; }
+  .datatable table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
+  .datatable th, .datatable td { text-align: right; padding: 4px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  .datatable th:first-child, .datatable td:first-child { text-align: left; }
+  .datatable th { color: var(--ink-muted); font-weight: 500; }
+
+  svg text { font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink-muted); }
+  svg text.val { fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+  svg text.emph { fill: var(--ink-1); font-weight: 600; }
+  .gridline { stroke: var(--grid); stroke-width: 1; }
+  .axisline { stroke: var(--axis); stroke-width: 1; }
+  .s1 { fill: var(--series-1); } .s1s { stroke: var(--series-1); }
+  .s2 { fill: var(--series-2); } .s2s { stroke: var(--series-2); }
+  .pos { fill: var(--pos); } .neg { fill: var(--neg); }
+  .demph { fill: var(--demph); }
+  .ring { stroke: var(--surface-1); stroke-width: 2; }
+  .crosshair { stroke: var(--axis); stroke-width: 1; }
+  .hit { fill: transparent; pointer-events: all; }
+  .hoverable:hover { filter: brightness(1.15); }
+
+  .tooltip {
+    position: fixed; z-index: 10; pointer-events: none;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.14); max-width: 260px;
+  }
+  .tooltip .tt-title { color: var(--ink-muted); margin-bottom: 4px; }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 6px; }
+  .tooltip .tt-key { width: 10px; height: 2px; border-radius: 1px; flex: none; }
+  .tooltip .tt-val { font-weight: 650; color: var(--ink-1); font-variant-numeric: tabular-nums; }
+  .tooltip .tt-lab { color: var(--ink-2); }
+  .note { color: var(--ink-muted); font-size: 12px; margin-top: 24px; }
+  .note a { color: var(--series-1); }
+  #status { color: var(--ink-2); padding: 40px 0; }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <header>
+    <h1>CS2 performance</h1>
+    <p class="sub" id="subtitle">Loading data…</p>
+  </header>
+
+  <div class="filters" id="filters" role="group" aria-label="Filters" hidden>
+    <div class="seg" id="rangeSeg" role="group" aria-label="Date range"></div>
+    <div class="seg" id="queueSeg" role="group" aria-label="Queue"></div>
+    <span class="flabel" id="filterNote"></span>
+  </div>
+
+  <p id="status">Loading match archive…</p>
+  <section class="kpi-row" id="kpis"></section>
+  <main class="grid" id="charts"></main>
+
+  <p class="note">
+    Data from the <a href="https://api-public-docs.cs-prod.leetify.com">Leetify public API</a>,
+    synced daily by a GitHub Action. Lobby strength is a z-score composite of the enemy team's
+    preaim, reaction time and counter-strafing — lower crosshair placement error and faster
+    reactions mean a stronger lobby. Leetify rating is shown ×100, as on leetify.com.
+  </p>
+</div>
+<div class="tooltip" id="tooltip" hidden></div>
+
+<script>
+(async function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const SVGNS = "http://www.w3.org/2000/svg";
+
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v);
+    }
+    for (const kid of kids) n.append(kid);
+    return n;
+  }
+  function svg(tag, attrs = {}) {
+    const n = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  }
+  const fmt1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toLocaleString("en-US", { maximumFractionDigits: 1 }));
+  const fmt2 = (v) => (v == null ? "–" : v.toFixed(2));
+  const fmtPct = (v) => (v == null ? "–" : Math.round(v * 100) + "%");
+  const fmtRating = (v) => (v == null ? "–" : (v >= 0 ? "+" : "") + (v * 100).toFixed(2));
+  const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+
+  // ---------- data ----------
+  let MATCHES, HISTORY;
+  try {
+    [MATCHES, HISTORY] = await Promise.all([
+      fetch("data/matches.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+      fetch("data/profile_history.json").then((r) => (r.ok ? r.json() : [])),
+    ]);
+  } catch (e) {
+    $("status").textContent = "Could not load data/matches.json — if you opened this file directly, serve it over HTTP (python3 -m http.server).";
+    return;
+  }
+  MATCHES.sort((a, b) => a.finished_at.localeCompare(b.finished_at));
+  MATCHES.forEach((m) => { m.date = new Date(m.finished_at); });
+
+  // session index: a new session starts after a >2h gap between match end times
+  {
+    let session = 0, prev = null;
+    for (const m of MATCHES) {
+      if (prev && m.date - prev > 2 * 3600e3) session += 1;
+      m.session = session;
+      prev = m.date;
+    }
+    const counts = {};
+    for (const m of MATCHES) {
+      counts[m.session] = (counts[m.session] || 0) + 1;
+      m.gameInSession = counts[m.session];
+    }
+  }
+
+  const QUEUES = [
+    { id: "all", label: "All queues" },
+    { id: "matchmaking", label: "Premier" },
+    { id: "matchmaking_competitive", label: "Competitive" },
+    { id: "faceit", label: "Faceit" },
+    { id: "matchmaking_wingman", label: "Wingman" },
+  ].filter((q) => q.id === "all" || MATCHES.some((m) => m.data_source === q.id));
+  const queueLabel = (id) => (QUEUES.find((q) => q.id === id) || { label: id }).label;
+
+  const RANGES = [
+    { id: "all", label: "All time", days: null },
+    { id: "90", label: "Last 90 days", days: 90 },
+    { id: "30", label: "Last 30 days", days: 30 },
+  ];
+  const state = { range: "all", queue: "all" };
+
+  const latest = MATCHES[MATCHES.length - 1].date;
+  const profile = HISTORY.length ? HISTORY[HISTORY.length - 1] : null;
+  {
+    const first = MATCHES[0].date;
+    const d = (x) => x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    let sub = `${MATCHES.length} matches archived · ${d(first)} – ${d(latest)}`;
+    if (profile) {
+      const r = profile.ranks || {};
+      const bits = [];
+      if (r.premier) bits.push(`Premier ${r.premier.toLocaleString("en-US")}`);
+      if (r.faceit) bits.push(`Faceit ${r.faceit}` + (r.faceit_elo ? ` (${r.faceit_elo} elo)` : ""));
+      if (r.leetify != null) bits.push(`Leetify rank ${r.leetify}`);
+      if (bits.length) sub += " · " + bits.join(" · ");
+    }
+    $("subtitle").textContent = sub;
+  }
+
+  // ---------- tooltip ----------
+  const tt = $("tooltip");
+  function showTip(evt, title, rows) {
+    tt.replaceChildren();
+    if (title) tt.append(el("div", { class: "tt-title" }, title));
+    for (const r of rows) {
+      const row = el("div", { class: "tt-row" });
+      if (r.color) { const k = el("span", { class: "tt-key" }); k.style.background = r.color; row.append(k); }
+      row.append(el("span", { class: "tt-val" }, r.value), el("span", { class: "tt-lab" }, r.label || ""));
+      tt.append(row);
+    }
+    tt.hidden = false;
+    moveTip(evt);
+  }
+  function moveTip(evt) {
+    const pad = 14;
+    let x = evt.clientX + pad, y = evt.clientY + pad;
+    const r = tt.getBoundingClientRect();
+    if (x + r.width > innerWidth - 8) x = evt.clientX - r.width - pad;
+    if (y + r.height > innerHeight - 8) y = evt.clientY - r.height - pad;
+    tt.style.left = x + "px";
+    tt.style.top = y + "px";
+  }
+  function hideTip() { tt.hidden = true; }
+  const seriesColor = (cls) => getComputedStyle(document.body).getPropertyValue(
+    { s1: "--series-1", s2: "--series-2", pos: "--pos", neg: "--neg", demph: "--demph" }[cls] || "--series-1").trim();
+
+  // ---------- chart card ----------
+  function card(title, subtitle, { wide = false } = {}) {
+    const body = el("div", { class: "cbody" });
+    const tableWrap = el("div", { class: "datatable" });
+    const btn = el("button", { class: "tbtn", "aria-expanded": "false", onclick: () => {
+      const open = tableWrap.classList.toggle("open");
+      btn.setAttribute("aria-expanded", String(open));
+      btn.textContent = open ? "Chart only" : "Table";
+    } }, "Table");
+    const fig = el("figure", { class: "card" + (wide ? " wide" : "") },
+      el("div", { class: "card-head" }, el("h2", {}, title), btn, el("span", { class: "csub" }, subtitle || "")),
+      body, tableWrap);
+    return {
+      fig, body,
+      setTable(headers, rows) {
+        tableWrap.replaceChildren();
+        const table = el("table");
+        const tr = el("tr");
+        headers.forEach((h) => tr.append(el("th", {}, h)));
+        table.append(el("thead", {}, tr));
+        const tb = el("tbody");
+        rows.forEach((r) => {
+          const tr2 = el("tr");
+          r.forEach((c) => tr2.append(el("td", {}, String(c))));
+          tb.append(tr2);
+        });
+        table.append(tb);
+        tableWrap.append(table);
+      },
+      legend(items) {
+        const lg = el("div", { class: "legend" });
+        items.forEach((it) => {
+          const sw = el("span", { class: it.line ? "linekey" : "swatch" });
+          sw.style.background = seriesColor(it.cls);
+          lg.append(el("span", { class: "key" }, sw, it.label));
+        });
+        fig.insertBefore(lg, tableWrap);
+      },
+    };
+  }
+
+  // ---------- line chart (single series, crosshair tooltip) ----------
+  function lineChart(container, pts, { fmt = fmt1, baseline = null, height = 190 } = {}) {
+    container.replaceChildren();
+    if (pts.length < 2) { container.append(el("p", { class: "csub" }, "Not enough matches in this slice.")); return; }
+    const W = 560, H = height, m = { t: 12, r: 14, b: 26, l: 44 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const xs = pts.map((p) => p.x.getTime());
+    const ys = pts.map((p) => p.y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    let y0 = Math.min(...ys), y1 = Math.max(...ys);
+    if (baseline != null) { y0 = Math.min(y0, baseline); y1 = Math.max(y1, baseline); }
+    const span = (y1 - y0) || 1; y0 -= span * 0.12; y1 += span * 0.12;
+    const X = (t) => m.l + ((t - x0) / (x1 - x0 || 1)) * iw;
+    const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * ih;
+
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+    const yticks = niceTicks(y0, y1, 4);
+    for (const v of yticks) {
+      s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }));
+      const t = svg("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", class: "val" });
+      t.textContent = fmt(v); s.append(t);
+    }
+    if (baseline != null && baseline >= y0 && baseline <= y1)
+      s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(baseline), y2: Y(baseline), class: "axisline" }));
+    const months = dateTicks(x0, x1, 4);
+    for (const d of months) {
+      const t = svg("text", { x: X(d.getTime()), y: H - 8, "text-anchor": "middle" });
+      t.textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+      s.append(t);
+    }
+    const dAttr = pts.map((p, i) => (i ? "L" : "M") + X(p.x.getTime()).toFixed(1) + " " + Y(p.y).toFixed(1)).join(" ");
+    s.append(svg("path", { d: dAttr, fill: "none", class: "s1s", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    const last = pts[pts.length - 1];
+    s.append(svg("circle", { cx: X(last.x.getTime()), cy: Y(last.y), r: 4, class: "s1 ring" }));
+    let labY = Y(last.y) - 10;
+    if (labY < m.t + 10) labY = Y(last.y) + 20;
+    const endLab = svg("text", { x: X(last.x.getTime()) - 6, y: labY, "text-anchor": "end", class: "val emph" });
+    endLab.textContent = fmt(last.y); s.append(endLab);
+
+    const cross = svg("line", { y1: m.t, y2: m.t + ih, class: "crosshair", visibility: "hidden" });
+    const dot = svg("circle", { r: 4, class: "s1 ring", visibility: "hidden" });
+    s.append(cross, dot);
+    const overlay = svg("rect", { x: m.l, y: m.t, width: iw, height: ih, class: "hit", tabindex: 0 });
+    function nearest(px) {
+      let best = 0, bd = Infinity;
+      pts.forEach((p, i) => { const d = Math.abs(X(p.x.getTime()) - px); if (d < bd) { bd = d; best = i; } });
+      return best;
+    }
+    overlay.addEventListener("pointermove", (evt) => {
+      const box = s.getBoundingClientRect();
+      const px = ((evt.clientX - box.left) / box.width) * W;
+      const i = nearest(px);
+      const p = pts[i];
+      cross.setAttribute("x1", X(p.x.getTime())); cross.setAttribute("x2", X(p.x.getTime()));
+      cross.setAttribute("visibility", "visible");
+      dot.setAttribute("cx", X(p.x.getTime())); dot.setAttribute("cy", Y(p.y));
+      dot.setAttribute("visibility", "visible");
+      showTip(evt, p.x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+        [{ color: seriesColor("s1"), value: fmt(p.y), label: p.label || "" }]);
+    });
+    overlay.addEventListener("pointerleave", () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); hideTip(); });
+    s.append(overlay);
+    container.append(s);
+  }
+
+  function niceTicks(lo, hi, n) {
+    const span = hi - lo, step0 = span / n;
+    const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    const step = [1, 2, 2.5, 5, 10].map((s) => s * mag).find((s) => span / s <= n + 1) || mag * 10;
+    const start = Math.ceil(lo / step) * step;
+    const out = [];
+    for (let v = start; v <= hi + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6);
+    return out;
+  }
+  function dateTicks(t0, t1, n) {
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(new Date(t0 + ((t1 - t0) * i) / (n - 1 || 1)));
+    return out;
+  }
+
+  // ---------- horizontal bars ----------
+  function hBars(container, items, { fmt = fmt1, diverging = false, max = null } = {}) {
+    container.replaceChildren();
+    if (!items.length) { container.append(el("p", { class: "csub" }, "No data in this slice.")); return; }
+    const W = 560, rowH = 30, m = { t: 6, r: 52, b: 6, l: 108 };
+    const H = m.t + m.b + rowH * items.length;
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+    const iw = W - m.l - m.r;
+    let lo = 0, hi = max != null ? max : Math.max(...items.map((i) => i.value));
+    if (diverging) { const a = Math.max(...items.map((i) => Math.abs(i.value))) || 1; lo = -a; hi = a; }
+    const X = (v) => m.l + ((v - lo) / (hi - lo || 1)) * iw;
+    if (diverging) s.append(svg("line", { x1: X(0), x2: X(0), y1: m.t, y2: H - m.b, class: "axisline" }));
+    items.forEach((it, i) => {
+      const y = m.t + i * rowH + (rowH - 18) / 2;
+      const lab = svg("text", { x: m.l - 10, y: y + 13, "text-anchor": "end", class: "val" });
+      lab.textContent = it.label; s.append(lab);
+      const v0 = diverging ? Math.min(X(0), X(it.value)) : X(0);
+      const w = Math.abs(X(it.value) - X(0));
+      const cls = diverging ? (it.value >= 0 ? "pos" : "neg") : "s1";
+      const positiveEnd = !diverging || it.value >= 0;
+      const bar = svg("path", { d: roundedBar(v0, y, Math.max(w, 1), 18, positiveEnd), class: cls + " hoverable" });
+      s.append(bar);
+      const vx = positiveEnd ? v0 + w + 8 : v0 - 8;
+      const vt = svg("text", { x: vx, y: y + 13, "text-anchor": positiveEnd ? "start" : "end", class: "val" });
+      vt.textContent = fmt(it.value); s.append(vt);
+      const hit = svg("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, class: "hit", tabindex: 0 });
+      const tip = (evt) => showTip(evt, it.label, (it.tip || [{ value: fmt(it.value), label: "" }]).map((r) => ({ ...r, color: r.color || seriesColor(cls) })));
+      hit.addEventListener("pointermove", tip);
+      hit.addEventListener("focus", (e) => tip({ clientX: 200, clientY: e.target.getBoundingClientRect().top }));
+      hit.addEventListener("pointerleave", hideTip);
+      hit.addEventListener("blur", hideTip);
+      s.append(hit);
+    });
+    container.append(s);
+  }
+  // rounded data-end, square baseline end
+  function roundedBar(x, y, w, h, roundRight) {
+    const r = Math.min(4, w);
+    if (roundRight)
+      return `M${x} ${y} h${w - r} a${r} ${r} 0 0 1 ${r} ${r} v${h - 2 * r} a${r} ${r} 0 0 1 -${r} ${r} h-${w - r} Z`;
+    return `M${x + w} ${y} h-${w - r} a${r} ${r} 0 0 0 -${r} ${r} v${h - 2 * r} a${r} ${r} 0 0 0 ${r} ${r} h${w - r} Z`;
+  }
+  function roundedCol(x, y, w, h) {
+    const r = Math.min(4, h, w / 2);
+    return `M${x} ${y + h} v-${h - r} a${r} ${r} 0 0 1 ${r} -${r} h${w - 2 * r} a${r} ${r} 0 0 1 ${r} ${r} v${h - r} Z`;
+  }
+
+  // ---------- vertical columns ----------
+  function vCols(container, items, { fmt = fmt1, diverging = false, height = 190 } = {}) {
+    container.replaceChildren();
+    if (!items.length) { container.append(el("p", { class: "csub" }, "No data in this slice.")); return; }
+    const W = 560, H = height, m = { t: 18, r: 14, b: 26, l: 44 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+    let lo = 0, hi = Math.max(...items.map((i) => i.value));
+    if (diverging) { const a = Math.max(...items.map((i) => Math.abs(i.value))) || 1; lo = -a; hi = a; }
+    if (hi === lo) hi = lo + 1;
+    const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * ih;
+    const band = iw / items.length;
+    const bw = Math.min(24, band - 8);
+    s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(diverging ? 0 : lo), y2: Y(diverging ? 0 : lo), class: "axisline" }));
+    items.forEach((it, i) => {
+      const cx = m.l + band * i + band / 2;
+      const cls = diverging ? (it.value >= 0 ? "pos" : "neg") : "s1";
+      const top = Y(Math.max(it.value, 0)), bot = Y(Math.min(it.value, 0));
+      const h = Math.max(Math.abs(top - bot), 1);
+      let d;
+      if (!diverging || it.value >= 0) d = roundedCol(cx - bw / 2, top, bw, h);
+      else {
+        const r = Math.min(4, h, bw / 2);
+        d = `M${cx - bw / 2} ${top} v${h - r} a${r} ${r} 0 0 0 ${r} ${r} h${bw - 2 * r} a${r} ${r} 0 0 0 ${r} -${r} v-${h - r} Z`;
+      }
+      s.append(svg("path", { d, class: cls + " hoverable" }));
+      const lt = svg("text", { x: cx, y: H - 8, "text-anchor": "middle" });
+      lt.textContent = it.label; s.append(lt);
+      const vt = svg("text", { x: cx, y: (it.value >= 0 ? top - 6 : bot + 14), "text-anchor": "middle", class: "val" });
+      vt.textContent = fmt(it.value); s.append(vt);
+      const hit = svg("rect", { x: m.l + band * i, y: m.t, width: band, height: ih, class: "hit", tabindex: 0 });
+      const tip = (evt) => showTip(evt, it.tipTitle || it.label, (it.tip || [{ value: fmt(it.value), label: "" }]).map((r) => ({ ...r, color: r.color || seriesColor(cls) })));
+      hit.addEventListener("pointermove", tip);
+      hit.addEventListener("focus", (e) => tip({ clientX: 200, clientY: e.target.getBoundingClientRect().top }));
+      hit.addEventListener("pointerleave", hideTip);
+      hit.addEventListener("blur", hideTip);
+      s.append(hit);
+    });
+    container.append(s);
+  }
+
+  // ---------- scatter ----------
+  function scatter(container, pts, { xLabel, yLabel, xFmt = fmt2, yFmt = fmt2, height = 260 } = {}) {
+    container.replaceChildren();
+    if (pts.length < 3) { container.append(el("p", { class: "csub" }, "Not enough matches in this slice.")); return; }
+    const W = 1120, H = height, m = { t: 12, r: 16, b: 34, l: 48 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const xs2 = (x1 - x0) || 1, ys2 = (y1 - y0) || 1;
+    x0 -= xs2 * 0.06; x1 += xs2 * 0.06; y0 -= ys2 * 0.1; y1 += ys2 * 0.1;
+    const X = (v) => m.l + ((v - x0) / (x1 - x0)) * iw;
+    const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * ih;
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+    for (const v of niceTicks(y0, y1, 4)) {
+      s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }));
+      const t = svg("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", class: "val" });
+      t.textContent = yFmt(v); s.append(t);
+    }
+    if (y0 < 0 && y1 > 0) s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), class: "axisline" }));
+    if (x0 < 0 && x1 > 0) s.append(svg("line", { x1: X(0), x2: X(0), y1: m.t, y2: m.t + ih, class: "axisline" }));
+    for (const v of niceTicks(x0, x1, 6)) {
+      const t = svg("text", { x: X(v), y: H - 18, "text-anchor": "middle", class: "val" });
+      t.textContent = xFmt(v); s.append(t);
+    }
+    const xl = svg("text", { x: m.l + iw / 2, y: H - 2, "text-anchor": "middle" });
+    xl.textContent = xLabel; s.append(xl);
+    const yl = svg("text", { x: 12, y: m.t + 4, "text-anchor": "start" });
+    yl.textContent = yLabel; s.append(yl);
+    for (const p of pts) s.append(svg("circle", { cx: X(p.x), cy: Y(p.y), r: 4.5, class: p.cls + " ring" }));
+    for (const p of pts) {
+      const hit = svg("circle", { cx: X(p.x), cy: Y(p.y), r: 13, class: "hit", tabindex: 0 });
+      const tip = (evt) => showTip(evt, p.title, p.tip.map((r) => ({ ...r, color: r.color || seriesColor(p.cls) })));
+      hit.addEventListener("pointermove", tip);
+      hit.addEventListener("focus", (e) => tip({ clientX: 300, clientY: e.target.getBoundingClientRect().top }));
+      hit.addEventListener("pointerleave", hideTip);
+      hit.addEventListener("blur", hideTip);
+      s.append(hit);
+    }
+    container.append(s);
+  }
+
+  // ---------- filters ----------
+  function segButtons(node, options, key) {
+    node.replaceChildren();
+    options.forEach((o) => {
+      node.append(el("button", {
+        class: "opt", "aria-pressed": String(state[key] === o.id),
+        onclick: () => { state[key] = o.id; renderAll(); },
+      }, o.label));
+    });
+  }
+
+  // ---------- derived helpers ----------
+  const rolling = (arr, w, acc) => arr.map((_, i) => {
+    const lo = Math.max(0, i - w + 1);
+    return mean(arr.slice(lo, i + 1).map(acc));
+  });
+  const MAPLABEL = (n) => (n || "").replace(/^(de|cs)_/, "").replace(/^\w/, (c) => c.toUpperCase());
+
+  function filtered() {
+    const r = RANGES.find((x) => x.id === state.range);
+    const cutoff = r.days ? new Date(latest.getTime() - r.days * 86400e3) : null;
+    return MATCHES.filter((m) =>
+      (!cutoff || m.date >= cutoff) && (state.queue === "all" || m.data_source === state.queue));
+  }
+
+  // ---------- render ----------
+  function renderAll() {
+    segButtons($("rangeSeg"), RANGES, "range");
+    segButtons($("queueSeg"), QUEUES, "queue");
+    $("filters").hidden = false;
+    $("status").hidden = true;
+
+    const ms = filtered();
+    $("filterNote").textContent = `${ms.length} matches in view`;
+    renderKpis(ms);
+    const charts = $("charts");
+    charts.replaceChildren();
+    if (!ms.length) { charts.append(el("p", { class: "csub" }, "No matches match the current filters.")); return; }
+
+    renderForm(charts, ms);
+    renderMechanics(charts, ms);
+    renderMaps(charts, ms);
+    renderQueues(charts, ms);
+    renderSessions(charts, ms);
+    renderOpponents(charts, ms);
+  }
+
+  function renderKpis(ms) {
+    const k = $("kpis");
+    k.replaceChildren();
+    const w = ms.filter((m) => m.outcome === "win").length;
+    const l = ms.filter((m) => m.outcome === "loss").length;
+    const t = ms.length - w - l;
+    const kills = ms.reduce((s, m) => s + m.me.total_kills, 0);
+    const deaths = ms.reduce((s, m) => s + m.me.total_deaths, 0);
+    const half = Math.floor(ms.length / 2);
+    const older = ms.slice(0, half), newer = ms.slice(half);
+    const tiles = [
+      { label: "Matches", value: String(ms.length) },
+      { label: "Record", value: `${w}–${l}` + (t ? `–${t}` : ""), delta: ms.length ? fmtPct(w / ms.length) + " winrate" : null },
+      delta("Leetify rating", (a) => mean(a.map((m) => m.me.leetify_rating)), fmtRating, true),
+      { label: "K/D", value: deaths ? fmt2(kills / deaths) : "–" },
+      delta("ADR", (a) => mean(a.map((m) => m.me.dpr)), (v) => fmt1(v), true),
+      delta("Headshot %", (a) => mean(a.map((m) => m.me.accuracy_head)), (v) => fmt1(v * 100) + "%", true),
+    ];
+    function delta(label, acc, f, upGood) {
+      const cur = acc(ms), o = acc(older), n = acc(newer);
+      const tile = { label, value: f(cur) };
+      if (o != null && n != null && older.length >= 5) {
+        const diff = n - o;
+        tile.delta = (diff >= 0 ? "▲ " : "▼ ") + f(Math.abs(diff)).replace(/^\+/, "") + " newer vs older half";
+        tile.deltaClass = diff === 0 ? "" : (diff > 0) === upGood ? "good" : "bad";
+      }
+      return tile;
+    }
+    tiles.forEach((tl) => {
+      const d = el("div", { class: "tile" }, el("div", { class: "tlabel" }, tl.label), el("div", { class: "tvalue" }, tl.value));
+      if (tl.delta) d.append(el("div", { class: "tdelta " + (tl.deltaClass || "") }, tl.delta));
+      k.append(d);
+    });
+  }
+
+  function renderForm(root, ms) {
+    const w = Math.min(20, Math.max(5, Math.floor(ms.length / 3)));
+    const c1 = card("Form — Leetify rating", `rolling ${w}-game average`);
+    const roll = rolling(ms, w, (m) => m.me.leetify_rating * 100);
+    lineChart(c1.body, ms.map((m, i) => ({ x: m.date, y: roll[i], label: "rolling rating" })), { fmt: (v) => (v >= 0 ? "+" : "") + fmt1(v), baseline: 0 });
+    c1.setTable(["Date", "Map", "Queue", "Result", "Score", "Rating", `Rolling ${w}`],
+      ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), queueLabel(m.data_source), m.outcome, `${m.score[0]}–${m.score[1]}`, fmtRating(m.me.leetify_rating), (roll[i] >= 0 ? "+" : "") + fmt1(roll[i])]));
+    root.append(c1.fig);
+
+    const c2 = card("Form — winrate", `rolling ${w}-game average`);
+    const rollW = rolling(ms, w, (m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0));
+    lineChart(c2.body, ms.map((m, i) => ({ x: m.date, y: rollW[i] * 100, label: "rolling winrate" })), { fmt: (v) => fmt1(v) + "%", baseline: 50 });
+    c2.setTable(["Date", "Result", `Rolling ${w} winrate`], ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), m.outcome, fmt1(rollW[i] * 100) + "%"]));
+    root.append(c2.fig);
+  }
+
+  function renderMechanics(root, ms) {
+    const w = Math.min(10, Math.max(3, Math.floor(ms.length / 4)));
+    const defs = [
+      { title: "Preaim (crosshair placement)", sub: "degrees off target — lower is better", acc: (m) => m.me.preaim, fmt: fmt1 },
+      { title: "Reaction time", sub: "milliseconds — lower is better", acc: (m) => m.me.reaction_time * 1000, fmt: (v) => fmt1(v) },
+      { title: "Headshot accuracy", sub: "% of hits that are headshots", acc: (m) => m.me.accuracy_head * 100, fmt: (v) => fmt1(v) + "%" },
+      { title: "Counter-strafing", sub: "% of shots while properly stopped", acc: (m) => m.me.counter_strafing_shots_good_ratio * 100, fmt: (v) => fmt1(v) + "%" },
+    ];
+    for (const d of defs) {
+      const c = card(d.title, `${d.sub} · rolling ${w}`);
+      const roll = rolling(ms, w, d.acc);
+      lineChart(c.body, ms.map((m, i) => ({ x: m.date, y: roll[i] })), { fmt: d.fmt, height: 160 });
+      c.setTable(["Date", "Value", `Rolling ${w}`], ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), d.fmt(d.acc(m)), d.fmt(roll[i])]));
+      root.append(c.fig);
+    }
+  }
+
+  function groupBy(ms, keyFn) {
+    const g = new Map();
+    for (const m of ms) {
+      const k = keyFn(m);
+      if (!g.has(k)) g.set(k, []);
+      g.get(k).push(m);
+    }
+    return g;
+  }
+  const winrate = (a) => mean(a.map((m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0)));
+
+  function renderMaps(root, ms) {
+    const MIN = 3;
+    const groups = [...groupBy(ms, (m) => m.map_name)].filter(([, a]) => a.length >= MIN)
+      .sort((a, b) => b[1].length - a[1].length);
+    const small = [...groupBy(ms, (m) => m.map_name)].filter(([, a]) => a.length < MIN);
+
+    const c1 = card("Winrate by map", `maps with ≥${MIN} games`);
+    hBars(c1.body, groups.map(([name, a]) => ({
+      label: `${MAPLABEL(name)} (${a.length})`, value: winrate(a) * 100,
+      tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
+            { value: `${a.filter((m) => m.outcome === "win").length}–${a.filter((m) => m.outcome === "loss").length}`, label: "record" }],
+    })), { fmt: (v) => Math.round(v) + "%", max: 100 });
+    c1.setTable(["Map", "Games", "W", "L", "T", "Winrate"], groups.map(([name, a]) => [
+      MAPLABEL(name), a.length,
+      a.filter((m) => m.outcome === "win").length, a.filter((m) => m.outcome === "loss").length,
+      a.filter((m) => m.outcome === "tie").length, fmt1(winrate(a) * 100) + "%"]));
+    if (small.length) c1.fig.append(el("div", { class: "csub" },
+      "Small samples: " + small.map(([n, a]) => `${MAPLABEL(n)} (${a.length})`).join(", ")));
+    root.append(c1.fig);
+
+    const c2 = card("Your rating by map", "avg Leetify rating — positive means you outperform");
+    hBars(c2.body, groups.map(([name, a]) => ({
+      label: `${MAPLABEL(name)} (${a.length})`, value: mean(a.map((m) => m.me.leetify_rating)) * 100,
+      tip: [{ value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
+            { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "avg K/D" }],
+    })), { fmt: (v) => (v >= 0 ? "+" : "") + fmt1(v), diverging: true });
+    c2.setTable(["Map", "Games", "Avg rating", "Avg K/D", "Avg ADR"], groups.map(([name, a]) => [
+      MAPLABEL(name), a.length, fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+      fmt2(mean(a.map((m) => m.me.kd_ratio))), fmt1(mean(a.map((m) => m.me.dpr)))]));
+    root.append(c2.fig);
+  }
+
+  function renderQueues(root, ms) {
+    if (state.queue !== "all") return;
+    const groups = [...groupBy(ms, (m) => m.data_source)].sort((a, b) => b[1].length - a[1].length);
+    const c = card("Queue comparison", "winrate and avg rating by queue");
+    const wrap = el("div");
+    const half = el("div");
+    vCols(half, groups.map(([q, a]) => ({
+      label: `${queueLabel(q)} (${a.length})`, value: winrate(a) * 100,
+      tipTitle: queueLabel(q),
+      tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
+            { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
+            { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "avg K/D" }],
+    })), { fmt: (v) => Math.round(v) + "%", height: 180 });
+    wrap.append(half);
+    c.body.append(wrap);
+    c.setTable(["Queue", "Games", "Winrate", "Avg rating", "Avg K/D", "Avg ADR"], groups.map(([q, a]) => [
+      queueLabel(q), a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+      fmt2(mean(a.map((m) => m.me.kd_ratio))), fmt1(mean(a.map((m) => m.me.dpr)))]));
+    root.append(c.fig);
+  }
+
+  function renderSessions(root, ms) {
+    const buckets = [[1, "1st"], [2, "2nd"], [3, "3rd"], [4, "4th"], [5, "5th+"]];
+    const items = buckets.map(([n, label]) => {
+      const a = ms.filter((m) => (n < 5 ? m.gameInSession === n : m.gameInSession >= 5));
+      if (!a.length) return null;
+      return {
+        label: `${label} (${a.length})`, value: mean(a.map((m) => m.me.leetify_rating)) * 100,
+        tipTitle: `${label} game of a session`,
+        tip: [{ value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
+              { value: fmt1(winrate(a) * 100) + "%", label: "winrate" }],
+      };
+    }).filter(Boolean);
+    const c = card("Game number within session", "sessions split on 2h+ breaks — does form fade in long sessions?");
+    vCols(c.body, items, { fmt: (v) => (v >= 0 ? "+" : "") + fmt1(v), diverging: true, height: 180 });
+    c.setTable(["Game in session", "Matches", "Avg rating", "Winrate"], buckets.map(([n, label]) => {
+      const a = ms.filter((m) => (n < 5 ? m.gameInSession === n : m.gameInSession >= 5));
+      return [label, a.length, a.length ? fmtRating(mean(a.map((m) => m.me.leetify_rating))) : "–", a.length ? fmt1(winrate(a) * 100) + "%" : "–"];
+    }));
+    root.append(c.fig);
+  }
+
+  function renderOpponents(root, ms) {
+    const withLobby = ms.filter((m) => m.lobby && m.lobby.opponents && m.lobby.opponents.avg_preaim != null);
+    if (withLobby.length < 3) return;
+    // lobby strength: z-score composite of enemy preaim (lower = stronger),
+    // reaction time (lower = stronger), counter-strafing (higher = stronger)
+    const feats = [
+      { acc: (m) => -m.lobby.opponents.avg_preaim },
+      { acc: (m) => -m.lobby.opponents.avg_reaction_time },
+      { acc: (m) => m.lobby.opponents.avg_counter_strafing_ratio },
+    ];
+    for (const f of feats) {
+      const vals = withLobby.map(f.acc);
+      f.mu = mean(vals);
+      f.sd = Math.sqrt(mean(vals.map((v) => (v - f.mu) ** 2))) || 1;
+    }
+    const strength = (m) => mean(feats.map((f) => (f.acc(m) - f.mu) / f.sd));
+    withLobby.forEach((m) => { m._strength = strength(m); });
+
+    const c1 = card("Lobby strength vs your rating", "each dot is a match · strength from enemy preaim, reaction time, counter-strafing", { wide: true });
+    scatter(c1.body, withLobby.map((m) => ({
+      x: m._strength, y: m.me.leetify_rating * 100,
+      cls: m.outcome === "win" ? "s1" : m.outcome === "loss" ? "s2" : "demph",
+      title: `${MAPLABEL(m.map_name)} · ${m.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`,
+      tip: [
+        { value: `${m.score[0]}–${m.score[1]}`, label: m.outcome },
+        { value: fmtRating(m.me.leetify_rating), label: "your rating" },
+        { value: fmt2(m._strength), label: "lobby strength" },
+        { value: fmt1(m.lobby.opponents.avg_preaim) + "°", label: "enemy avg preaim" },
+      ],
+    })), { xLabel: "lobby strength (z-score, higher = stronger enemies)", yLabel: "your Leetify rating", xFmt: (v) => fmt1(v), yFmt: (v) => (v >= 0 ? "+" : "") + fmt1(v) });
+    c1.legend([{ cls: "s1", label: "Win" }, { cls: "s2", label: "Loss" }, { cls: "demph", label: "Tie" }]);
+    c1.setTable(["Date", "Map", "Result", "Score", "Your rating", "Lobby strength", "Enemy preaim", "Enemy reaction (ms)"],
+      withLobby.map((m) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), m.outcome, `${m.score[0]}–${m.score[1]}`,
+        fmtRating(m.me.leetify_rating), fmt2(m._strength), fmt1(m.lobby.opponents.avg_preaim) + "°",
+        fmt1(m.lobby.opponents.avg_reaction_time * 1000)]));
+    root.append(c1.fig);
+
+    const sorted = [...withLobby].sort((a, b) => a._strength - b._strength);
+    const terc = Math.floor(sorted.length / 3);
+    const tiers = [
+      ["Weaker lobbies", sorted.slice(0, terc)],
+      ["Even lobbies", sorted.slice(terc, 2 * terc)],
+      ["Stronger lobbies", sorted.slice(2 * terc)],
+    ].filter(([, a]) => a.length);
+    const c2 = card("Winrate by lobby strength", "matches split into terciles of enemy strength");
+    vCols(c2.body, tiers.map(([label, a]) => ({
+      label: `${label} (${a.length})`, value: winrate(a) * 100,
+      tipTitle: label,
+      tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
+            { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" }],
+    })), { fmt: (v) => Math.round(v) + "%", height: 180 });
+    c2.setTable(["Tier", "Matches", "Winrate", "Avg rating", "Avg K/D"], tiers.map(([label, a]) => [
+      label, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+      fmt2(mean(a.map((m) => m.me.kd_ratio)))]));
+    root.append(c2.fig);
+  }
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
