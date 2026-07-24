@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-00c8475a-eeea-45cb-8fbf-aa2c612126a9",
+ "finished_at": "2020-01-17T04:07:09.000Z",
+ "has_banned_player": false,
+ "id": "e57920ed-1fa9-4e69-a96e-fe8609a017d3",
+ "map_name": "de_inferno",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 0,
+   "team_number": 2
+  },
+  {
+   "score": 0,
+   "team_number": 3
+  }
+ ]
+}

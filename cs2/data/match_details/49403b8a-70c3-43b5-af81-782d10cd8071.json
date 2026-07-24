@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-946b80f5-8d0d-45e9-9a81-37cac4c4a767",
+ "finished_at": "2021-05-09T08:35:55.000Z",
+ "has_banned_player": false,
+ "id": "49403b8a-70c3-43b5-af81-782d10cd8071",
+ "map_name": "de_overpass",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 5,
+   "team_number": 2
+  },
+  {
+   "score": 16,
+   "team_number": 3
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-875078ca-231b-4063-a8a6-6e91709ab37a",
+ "finished_at": "2021-03-12T23:10:58.000Z",
+ "has_banned_player": false,
+ "id": "1b5996da-1e27-41b5-a092-5d96a6055ffa",
+ "map_name": "de_vertigo",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 2,
+   "team_number": 2
+  },
+  {
+   "score": 16,
+   "team_number": 3
+  }
+ ]
+}

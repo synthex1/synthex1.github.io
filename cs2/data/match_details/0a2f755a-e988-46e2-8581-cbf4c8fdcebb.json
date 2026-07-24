@@ -1,0 +1,19 @@
+{
+ "data_source": "faceit",
+ "data_source_match_id": "1-bf296308-7c90-4e10-81af-d656e90d0a7b",
+ "finished_at": "2020-11-07T21:20:35.000Z",
+ "has_banned_player": false,
+ "id": "0a2f755a-e988-46e2-8581-cbf4c8fdcebb",
+ "map_name": "de_nuke",
+ "stats": [],
+ "team_scores": [
+  {
+   "score": 4,
+   "team_number": 2
+  },
+  {
+   "score": 16,
+   "team_number": 3
+  }
+ ]
+}

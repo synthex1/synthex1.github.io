@@ -379,11 +379,15 @@
     if (baseline != null && baseline >= y0 && baseline <= y1)
       s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(baseline), y2: Y(baseline), class: "axisline" }));
     const months = dateTicks(x0, x1, 4);
-    for (const d of months) {
-      const t = svg("text", { x: X(d.getTime()), y: H - 8, "text-anchor": "middle" });
-      t.textContent = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const longSpan = (x1 - x0) > 300 * 86400e3;
+    months.forEach((d, i) => {
+      const anchor = i === 0 ? "start" : i === months.length - 1 ? "end" : "middle";
+      const t = svg("text", { x: X(d.getTime()), y: H - 8, "text-anchor": anchor });
+      t.textContent = longSpan
+        ? d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+        : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       s.append(t);
-    }
+    });
     const dAttr = pts.map((p, i) => (i ? "L" : "M") + X(p.x.getTime()).toFixed(1) + " " + Y(p.y).toFixed(1)).join(" ");
     s.append(svg("path", { d: dAttr, fill: "none", class: "s1s", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
     const last = pts[pts.length - 1];

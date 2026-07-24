@@ -18,6 +18,13 @@ dashboard at [`/cs2/`](https://synthex1.github.io/cs2/) reads the archived JSON.
   API automatically. Players whose Leetify privacy settings block the public
   API get flagged `"unavailable": true` and are skipped (and hidden from the
   dashboard's player switcher).
+- `scripts/backfill_faceit.py` — one-off historical backfill. Enumerates a
+  player's complete Faceit match history via the Faceit Data API and pulls every
+  match Leetify processed through the `/v2/matches/faceit/{id}` lookup (which
+  serves matches far older than the 100-match listing window). Needs
+  `FACEIT_API_KEY` in the environment; safe to re-run. Note: the lookup endpoint
+  answers 500 for matches Leetify never processed — the script treats those as
+  "not found".
 - `.github/workflows/leetify-sync.yml` — daily cron (09:17 UTC) + manual trigger.
 - `cs2/data/matches.json` — enriched per-match records, oldest first (main
   player; teammates live under `cs2/data/players/<steam64_id>/`).
