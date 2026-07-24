@@ -816,24 +816,37 @@
         fmt1(m.lobby.opponents.avg_reaction_time * 1000)]));
     root.append(c1.fig);
 
+    const strengthCard = (title, subtitle, tiers) => {
+      const c = card(title, subtitle);
+      vCols(c.body, tiers.map(([label, a]) => ({
+        label: `${label} (${a.length})`, value: winrate(a) * 100,
+        tipTitle: label,
+        tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
+              { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" }],
+      })), { fmt: (v) => Math.round(v) + "%", height: 180 });
+      c.setTable(["Tier", "Matches", "Winrate", "Avg rating", "Avg K/D"], tiers.map(([label, a]) => [
+        label, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+        fmt2(mean(a.map((m) => m.me.kd_ratio)))]));
+      root.append(c.fig);
+    };
+
     const sorted = [...withLobby].sort((a, b) => a._strength - b._strength);
     const terc = Math.floor(sorted.length / 3);
-    const tiers = [
-      ["Weaker lobbies", sorted.slice(0, terc)],
-      ["Even lobbies", sorted.slice(terc, 2 * terc)],
-      ["Stronger lobbies", sorted.slice(2 * terc)],
-    ].filter(([, a]) => a.length);
-    const c2 = card("Winrate by lobby strength", "matches split into terciles of enemy strength");
-    vCols(c2.body, tiers.map(([label, a]) => ({
-      label: `${label} (${a.length})`, value: winrate(a) * 100,
-      tipTitle: label,
-      tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
-            { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" }],
-    })), { fmt: (v) => Math.round(v) + "%", height: 180 });
-    c2.setTable(["Tier", "Matches", "Winrate", "Avg rating", "Avg K/D"], tiers.map(([label, a]) => [
-      label, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
-      fmt2(mean(a.map((m) => m.me.kd_ratio)))]));
-    root.append(c2.fig);
+    strengthCard("Winrate vs your typical opposition",
+      "equal thirds of matches, weakest to strongest lobby — counts equal by design",
+      [
+        ["Weakest third", sorted.slice(0, terc)],
+        ["Middle third", sorted.slice(terc, 2 * terc)],
+        ["Strongest third", sorted.slice(2 * terc)],
+      ].filter(([, a]) => a.length));
+
+    strengthCard("Winrate by lobby strength band",
+      "fixed z-score bands — counts show the real mix of lobbies you face",
+      [
+        ["Weaker (z < −⅓)", withLobby.filter((m) => m._strength < -1 / 3)],
+        ["Even (±⅓)", withLobby.filter((m) => m._strength >= -1 / 3 && m._strength <= 1 / 3)],
+        ["Stronger (z > ⅓)", withLobby.filter((m) => m._strength > 1 / 3)],
+      ].filter(([, a]) => a.length));
   }
 
   if (await loadPlayer(PLAYERS[0])) renderAll();
