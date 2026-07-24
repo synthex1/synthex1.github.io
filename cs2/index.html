@@ -164,6 +164,7 @@
   </header>
 
   <div class="filters" id="filters" role="group" aria-label="Filters" hidden>
+    <div class="seg" id="playerSeg" role="group" aria-label="Player"></div>
     <div class="seg" id="rangeSeg" role="group" aria-label="Date range"></div>
     <div class="seg" id="queueSeg" role="group" aria-label="Queue"></div>
     <span class="flabel" id="filterNote"></span>
@@ -210,56 +211,69 @@
   const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
 
   // ---------- data ----------
-  let MATCHES, HISTORY;
+  let PLAYERS = [{ steam64_id: "main", name: "", path: "." }];
   try {
-    [MATCHES, HISTORY] = await Promise.all([
-      fetch("data/matches.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-      fetch("data/profile_history.json").then((r) => (r.ok ? r.json() : [])),
-    ]);
-  } catch (e) {
-    $("status").textContent = "Could not load data/matches.json — if you opened this file directly, serve it over HTTP (python3 -m http.server).";
-    return;
-  }
-  MATCHES.sort((a, b) => a.finished_at.localeCompare(b.finished_at));
-  MATCHES.forEach((m) => { m.date = new Date(m.finished_at); });
+    const r = await fetch("data/players.json");
+    if (r.ok) PLAYERS = (await r.json()).filter((p) => !p.unavailable);
+  } catch (e) { /* single-player fallback */ }
 
-  // session index: a new session starts after a >2h gap between match end times
-  {
-    let session = 0, prev = null;
-    for (const m of MATCHES) {
-      if (prev && m.date - prev > 2 * 3600e3) session += 1;
-      m.session = session;
-      prev = m.date;
-    }
-    const counts = {};
-    for (const m of MATCHES) {
-      counts[m.session] = (counts[m.session] || 0) + 1;
-      m.gameInSession = counts[m.session];
-    }
-  }
-
-  const QUEUES = [
+  const ALL_QUEUES = [
     { id: "all", label: "All queues" },
     { id: "matchmaking", label: "Premier" },
     { id: "matchmaking_competitive", label: "Competitive" },
     { id: "faceit", label: "Faceit" },
     { id: "matchmaking_wingman", label: "Wingman" },
-  ].filter((q) => q.id === "all" || MATCHES.some((m) => m.data_source === q.id));
-  const queueLabel = (id) => (QUEUES.find((q) => q.id === id) || { label: id }).label;
+  ];
+  const queueLabel = (id) => (ALL_QUEUES.find((q) => q.id === id) || { label: id }).label;
 
   const RANGES = [
     { id: "all", label: "All time", days: null },
     { id: "90", label: "Last 90 days", days: 90 },
     { id: "30", label: "Last 30 days", days: 30 },
   ];
-  const state = { range: "all", queue: "all" };
+  const state = { range: "all", queue: "all", player: PLAYERS[0].steam64_id };
 
-  const latest = MATCHES[MATCHES.length - 1].date;
-  const profile = HISTORY.length ? HISTORY[HISTORY.length - 1] : null;
-  {
-    const first = MATCHES[0].date;
+  let MATCHES = [], HISTORY = [], QUEUES = [], latest = null, profile = null;
+
+  async function loadPlayer(entry) {
+    const base = "data/" + (entry.path === "." || !entry.path ? "" : entry.path + "/");
+    let matches, history;
+    try {
+      [matches, history] = await Promise.all([
+        fetch(base + "matches.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+        fetch(base + "profile_history.json").then((r) => (r.ok ? r.json() : [])),
+      ]);
+    } catch (e) {
+      $("status").hidden = false;
+      $("status").textContent = `Could not load ${base}matches.json — if you opened this file directly, serve it over HTTP (python3 -m http.server).`;
+      return false;
+    }
+    matches.sort((a, b) => a.finished_at.localeCompare(b.finished_at));
+    matches.forEach((m) => { m.date = new Date(m.finished_at); });
+
+    // session index: a new session starts after a >2h gap between match end times
+    let session = 0, prev = null;
+    for (const m of matches) {
+      if (prev && m.date - prev > 2 * 3600e3) session += 1;
+      m.session = session;
+      prev = m.date;
+    }
+    const counts = {};
+    for (const m of matches) {
+      counts[m.session] = (counts[m.session] || 0) + 1;
+      m.gameInSession = counts[m.session];
+    }
+
+    MATCHES = matches;
+    HISTORY = history;
+    QUEUES = ALL_QUEUES.filter((q) => q.id === "all" || matches.some((m) => m.data_source === q.id));
+    if (!QUEUES.some((q) => q.id === state.queue)) state.queue = "all";
+    latest = matches.length ? matches[matches.length - 1].date : new Date();
+    profile = history.length ? history[history.length - 1] : null;
+
     const d = (x) => x.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    let sub = `${MATCHES.length} matches archived · ${d(first)} – ${d(latest)}`;
+    let sub = `${matches.length} matches archived`;
+    if (matches.length) sub += ` · ${d(matches[0].date)} – ${d(latest)}`;
     if (profile) {
       const r = profile.ranks || {};
       const bits = [];
@@ -269,6 +283,7 @@
       if (bits.length) sub += " · " + bits.join(" · ");
     }
     $("subtitle").textContent = sub;
+    return true;
   }
 
   // ---------- tooltip ----------
@@ -441,8 +456,8 @@
       const positiveEnd = !diverging || it.value >= 0;
       const bar = svg("path", { d: roundedBar(v0, y, Math.max(w, 1), 18, positiveEnd), class: cls + " hoverable" });
       s.append(bar);
-      const vx = positiveEnd ? v0 + w + 8 : v0 - 8;
-      const vt = svg("text", { x: vx, y: y + 13, "text-anchor": positiveEnd ? "start" : "end", class: "val" });
+      const vx = positiveEnd ? v0 + w + 8 : X(0) + 8;
+      const vt = svg("text", { x: vx, y: y + 13, "text-anchor": "start", class: "val" });
       vt.textContent = fmt(it.value); s.append(vt);
       const hit = svg("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, class: "hit", tabindex: 0 });
       const tip = (evt) => showTip(evt, it.label, (it.tip || [{ value: fmt(it.value), label: "" }]).map((r) => ({ ...r, color: r.color || seriesColor(cls) })));
@@ -549,14 +564,22 @@
   }
 
   // ---------- filters ----------
-  function segButtons(node, options, key) {
+  function segButtons(node, options, key, onSelect) {
     node.replaceChildren();
     options.forEach((o) => {
       node.append(el("button", {
         class: "opt", "aria-pressed": String(state[key] === o.id),
-        onclick: () => { state[key] = o.id; renderAll(); },
+        onclick: () => { state[key] = o.id; (onSelect || renderAll)(o); },
       }, o.label));
     });
+  }
+
+  async function switchPlayer(option) {
+    const entry = PLAYERS.find((p) => p.steam64_id === option.id) || PLAYERS[0];
+    const charts = $("charts");
+    charts.style.opacity = "0.45";   // hold previous render while refetching
+    if (await loadPlayer(entry)) renderAll();
+    charts.style.opacity = "";
   }
 
   // ---------- derived helpers ----------
@@ -575,6 +598,10 @@
 
   // ---------- render ----------
   function renderAll() {
+    const pseg = $("playerSeg");
+    if (PLAYERS.length > 1)
+      segButtons(pseg, PLAYERS.map((p) => ({ id: p.steam64_id, label: p.name || p.steam64_id })), "player", switchPlayer);
+    else pseg.hidden = true;
     segButtons($("rangeSeg"), RANGES, "range");
     segButtons($("queueSeg"), QUEUES, "queue");
     $("filters").hidden = false;
@@ -805,7 +832,7 @@
     root.append(c2.fig);
   }
 
-  renderAll();
+  if (await loadPlayer(PLAYERS[0])) renderAll();
 })();
 </script>
 </body>

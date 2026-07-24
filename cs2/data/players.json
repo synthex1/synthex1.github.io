@@ -1,0 +1,28 @@
+[
+ {
+  "name": "synthex",
+  "path": ".",
+  "steam64_id": "76561198060924319"
+ },
+ {
+  "name": "Dillon [He/Him]",
+  "path": "players/76561198328254784",
+  "steam64_id": "76561198328254784"
+ },
+ {
+  "name": "Fat Tony",
+  "path": "players/76561198105095296",
+  "steam64_id": "76561198105095296"
+ },
+ {
+  "name": "",
+  "path": "players/76561198090202129",
+  "steam64_id": "76561198090202129",
+  "unavailable": true
+ },
+ {
+  "name": "Schanzii",
+  "path": "players/76561198208422264",
+  "steam64_id": "76561198208422264"
+ }
+]
