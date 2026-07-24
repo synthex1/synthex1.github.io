@@ -9,8 +9,13 @@ dashboard at [`/cs2/`](https://synthex1.github.io/cs2/) reads the archived JSON.
 
 - `scripts/fetch_leetify.py` — sync script (stdlib only). Dedupes matches by id,
   snapshots profile ratings by day, and enriches every new match with the full
-  10-player lobby detail from `/v2/matches/{id}` so opponent strength can be
-  analyzed later.
+  10-player lobby detail from `/v2/matches/{id}` so lobby strength can be
+  analyzed later. Each side of the lobby is stored as raw counters (`sums`) plus
+  the stats the API only exposes pre-averaged (`avgs`), so the dashboard can pool
+  the two sides into whole-server rates and know each rate's sample size.
+  `python3 scripts/fetch_leetify.py --rebuild` recomputes those aggregates for
+  every archived match from the cached details, offline — run it after changing
+  the aggregate shape instead of re-downloading the archive.
 - `cs2/data/players.json` — the tracked players. Each entry is
   `{"steam64_id", "name", "path"}`; `path` is relative to `cs2/data/` and holds
   that player's archive. Add a teammate by appending an entry with path
@@ -31,7 +36,33 @@ dashboard at [`/cs2/`](https://synthex1.github.io/cs2/) reads the archived JSON.
 - `cs2/data/profile_history.json` — daily snapshots of ranks and skill ratings
   (the API has no history for these, so this builds the time series).
 - `cs2/data/match_details/<id>.json` — raw full-lobby match details.
-- `cs2/index.html` — the dashboard (plain HTML/SVG, no dependencies).
+- `cs2/index.html` — the dashboard (plain HTML/SVG, no dependencies). Map, queue
+  and Leetify marks are inline SVG drawn for this page, not official artwork.
+
+## Lobby quality
+
+The dashboard scores how strong each server was, independently of whether the
+match was won. Three things make it behave:
+
+- **It reads all nine other players, not the enemy five.** Measured over this
+  archive, enemy-only averages are mostly a restatement of the result — enemy
+  Leetify rating correlates −0.81 with winning, enemy K/D −0.79, enemy trade
+  conversion −0.36. Averaging the whole server drops those to near zero, because
+  teammate numbers rise by roughly as much as enemy numbers fall.
+- **Sixteen signals across three areas** — aim and mechanics, utility use and
+  discipline, trade structure. Raw aim stats alone do not separate lobbies:
+  preaim, spray accuracy and accuracy-vs-spotted all show a flat-to-negative
+  relationship with a harder game, while utility thrown per round and trade
+  density show the strongest ones. The "Does each signal earn its place?" panel
+  reports that measurement instead of hiding it.
+- **Corrected for how long the match ran.** Every signal is regressed against
+  rounds played and pulled toward the average in proportion to how thin its
+  sample was, so a fast 13–3 no longer reads as a weak lobby just because it
+  produced less data.
+
+Leetify rating is deliberately not an input: it is scored relative to the lobby,
+so the other nine players always average to roughly the negation of your own
+rating (r = −0.99 in this archive) and carry no information about the server.
 
 ## Setup
 

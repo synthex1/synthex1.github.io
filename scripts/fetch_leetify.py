@@ -80,18 +80,58 @@ def mean(values):
     return round(sum(values) / len(values), 4) if values else None
 
 
+# Per-side counters the dashboard pools into rates. Kept as raw totals rather
+# than pre-averaged rates so the two sides can be recombined into a whole-lobby
+# figure without re-weighting, and so each rate carries its own sample size.
+SUM_KEYS = (
+    "rounds_count",
+    "total_kills",
+    "total_deaths",
+    "total_hs_kills",
+    "shots_fired_enemy_spotted",
+    "shots_hit_enemy_spotted",
+    "counter_strafing_shots_all",
+    "counter_strafing_shots_good",
+    "flashbang_thrown",
+    "flashbang_hit_foe",
+    "flashbang_hit_friend",
+    "flashbang_leading_to_kill",
+    "he_thrown",
+    "smoke_thrown",
+    "molotov_thrown",
+    "trade_kill_attempts",
+    "trade_kills_succeed",
+    "traded_death_attempts",
+    "traded_deaths_succeed",
+    "traded_death_opportunities",
+)
+
+# Per-side plain averages, for stats the API only exposes already averaged.
+AVG_KEYS = (
+    "leetify_rating",
+    "preaim",
+    "reaction_time",
+    "spray_accuracy",
+    "accuracy_head",
+    "kd_ratio",
+    "dpr",
+    "flashbang_hit_foe_avg_duration",
+    "utility_on_death_avg",
+    "he_foes_damage_avg",
+)
+
+
 def side_aggregate(players):
+    sums = {}
+    for k in SUM_KEYS:
+        vals = [p.get(k) for p in players if isinstance(p.get(k), (int, float))]
+        sums[k] = round(sum(vals), 4) if vals else 0
+    # rounds_count stays summed: it is the denominator for per-player-round
+    # rates (e.g. utility thrown per round of play across the side).
     return {
         "n": len(players),
-        "avg_leetify_rating": mean([p.get("leetify_rating") for p in players]),
-        "avg_preaim": mean([p.get("preaim") for p in players]),
-        "avg_reaction_time": mean([p.get("reaction_time") for p in players]),
-        "avg_counter_strafing_ratio": mean(
-            [p.get("counter_strafing_shots_good_ratio") for p in players]
-        ),
-        "avg_accuracy_head": mean([p.get("accuracy_head") for p in players]),
-        "avg_kd_ratio": mean([p.get("kd_ratio") for p in players]),
-        "avg_dpr": mean([p.get("dpr") for p in players]),
+        "avgs": {k: mean([p.get(k) for p in players]) for k in AVG_KEYS},
+        "sums": sums,
     }
 
 
@@ -133,6 +173,9 @@ def build_record(steam_id, summary, detail):
             p for p in detail["stats"] if p.get("initial_team_number") != my_team
         ]
         lobby = {
+            "rounds": max(
+                [p.get("rounds_count") or 0 for p in detail["stats"]] or [0]
+            ),
             "teammates": side_aggregate(teammates),
             "opponents": side_aggregate(opponents),
         }
@@ -223,12 +266,48 @@ def sync_player(entry):
         entry["unavailable"] = True
 
 
+def rebuild_player(entry):
+    """Recompute lobby aggregates for an existing archive from cached details.
+
+    Offline: touches no API. Used when the aggregate shape changes so the
+    dashboard gets the new fields without re-downloading 300+ matches.
+    """
+    steam_id = entry["steam64_id"]
+    pdir = os.path.normpath(os.path.join(DATA_DIR, entry.get("path", ".")))
+    matches_path = os.path.join(pdir, "matches.json")
+    archive = load_json(matches_path, [])
+    if not archive:
+        return
+    rebuilt = missing = 0
+    for record in archive:
+        detail = load_json(os.path.join(DETAILS_DIR, record["id"] + ".json"), None)
+        if not detail or not detail.get("stats"):
+            missing += 1
+            continue
+        fresh = build_record(steam_id, record, detail)
+        if fresh is None or fresh.get("lobby") is None:
+            missing += 1
+            continue
+        record["lobby"] = fresh["lobby"]
+        rebuilt += 1
+    save_json(matches_path, archive)
+    print(
+        f"rebuilt {rebuilt}/{len(archive)} lobby aggregates for "
+        f"{entry.get('name') or steam_id}" + (f" ({missing} without detail)" if missing else "")
+    )
+
+
 def main():
-    if not API_KEY:
+    rebuild = "--rebuild" in sys.argv[1:]
+    if not API_KEY and not rebuild:
         print("note: LEETIFY_API_KEY not set, using unauthenticated rate limits")
     players = load_json(PLAYERS_PATH, None)
     if players is None:
         players = [{"steam64_id": MAIN_STEAM64_ID, "name": "", "path": "."}]
+    if rebuild:
+        for entry in players:
+            rebuild_player(entry)
+        return
     for entry in players:
         sync_player(entry)
     save_json(PLAYERS_PATH, players)
