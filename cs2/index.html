@@ -8,6 +8,7 @@
   .viz-root {
     color-scheme: light;
     --surface-1: #fcfcfb;
+    --surface-2: #f2f2ee;
     --page: #f9f9f7;
     --ink-1: #0b0b0b;
     --ink-2: #52514e;
@@ -21,11 +22,13 @@
     --neg: #e34948;        /* diverging pole: below baseline */
     --demph: #c3c2b7;      /* de-emphasis / tie */
     --up-good: #006300;
+    --brand-leetify: #6a5cf0;
   }
   @media (prefers-color-scheme: dark) {
     :root:where(:not([data-theme="light"])) .viz-root {
       color-scheme: dark;
       --surface-1: #1a1a19;
+      --surface-2: #232322;
       --page: #0d0d0d;
       --ink-1: #ffffff;
       --ink-2: #c3c2b7;
@@ -39,11 +42,13 @@
       --neg: #e66767;
       --demph: #52514e;
       --up-good: #0ca30c;
+      --brand-leetify: #8f83ff;
     }
   }
   :root[data-theme="dark"] .viz-root {
     color-scheme: dark;
     --surface-1: #1a1a19;
+    --surface-2: #232322;
     --page: #0d0d0d;
     --ink-1: #ffffff;
     --ink-2: #c3c2b7;
@@ -57,6 +62,7 @@
     --neg: #e66767;
     --demph: #52514e;
     --up-good: #0ca30c;
+    --brand-leetify: #8f83ff;
   }
 
   * { box-sizing: border-box; }
@@ -64,73 +70,122 @@
     margin: 0;
     background: var(--page);
     color: var(--ink-1);
-    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
-  .wrap { max-width: 1160px; margin: 0 auto; padding: 24px 20px 64px; }
-  header h1 { font-size: 22px; font-weight: 650; margin: 0; }
-  header .sub { color: var(--ink-2); margin: 4px 0 0; font-size: 14px; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 28px 22px 72px; }
+  header h1 { font-size: 27px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  header .sub { color: var(--ink-2); margin: 6px 0 0; font-size: 15px; }
 
   .filters {
-    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
-    margin: 20px 0 16px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin: 22px 0 18px;
   }
-  .filters .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-1); }
+  .filters .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; background: var(--surface-1); }
   .filters button.opt {
     appearance: none; border: 0; background: transparent; color: var(--ink-2);
-    font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
+    font: inherit; font-size: 14px; padding: 7px 14px; cursor: pointer;
   }
   .filters button.opt[aria-pressed="true"] { background: var(--series-1); color: #fff; }
   .filters button.opt:not([aria-pressed="true"]):hover { color: var(--ink-1); }
-  .filters .flabel { font-size: 12px; color: var(--ink-muted); margin-left: 8px; }
+  .filters .flabel { font-size: 13px; color: var(--ink-muted); margin-left: 6px; }
 
   .kpi-row {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px; margin-bottom: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+    gap: 14px; margin-bottom: 8px;
   }
   .tile {
     background: var(--surface-1); border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 14px;
+    border-radius: 12px; padding: 14px 16px;
   }
-  .tile .tlabel { font-size: 12px; color: var(--ink-muted); }
-  .tile .tvalue { font-size: 26px; font-weight: 600; margin-top: 2px; }
-  .tile .tdelta { font-size: 12px; margin-top: 2px; color: var(--ink-2); }
+  .tile .tlabel { font-size: 13px; color: var(--ink-muted); display: flex; align-items: center; gap: 7px; }
+  .tile .tvalue { font-size: 32px; font-weight: 600; margin-top: 3px; letter-spacing: -0.02em; white-space: nowrap; }
+  .tile .tdelta { font-size: 13px; margin-top: 3px; color: var(--ink-2); }
   .tile .tdelta.good { color: var(--up-good); }
   .tile .tdelta.bad { color: var(--neg); }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+  /* ---- sections ---- */
+  section.sect { margin-top: 34px; }
+  .shead { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
+  .shead h2 { font-size: 21px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  .ssub { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; max-width: 78ch; }
+  .ssub a { color: var(--series-1); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(500px, 100%), 1fr)); gap: 16px; }
   figure.card {
     background: var(--surface-1); border: 1px solid var(--border);
-    border-radius: 10px; margin: 0; padding: 14px 16px 12px; min-width: 0;
+    border-radius: 12px; margin: 0; padding: 16px 18px 14px; min-width: 0;
   }
   figure.card.wide { grid-column: 1 / -1; }
-  .card-head { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: start; }
-  .card-head h2 { font-size: 14px; font-weight: 650; margin: 0; }
-  .card-head .csub { font-size: 12px; color: var(--ink-muted); grid-column: 1 / -1; }
+  .card-head { display: grid; grid-template-columns: auto 1fr auto; gap: 3px 11px; align-items: center; }
+  .card-head h3 { font-size: 17px; font-weight: 650; margin: 0; letter-spacing: -0.01em; }
+  .card-head .csub { font-size: 13px; color: var(--ink-muted); grid-column: 1 / -1; }
+  p.csub { font-size: 13px; color: var(--ink-muted); margin: 10px 0 0; max-width: 72ch; }
+  .card-head .mark { grid-row: 1; }
+  .chead-right { display: flex; align-items: center; gap: 10px; }
   .tbtn {
     appearance: none; border: 1px solid var(--border); background: transparent;
-    color: var(--ink-2); border-radius: 6px; font: inherit; font-size: 11px;
-    padding: 2px 8px; cursor: pointer;
+    color: var(--ink-2); border-radius: 7px; font: inherit; font-size: 12px;
+    padding: 3px 10px; cursor: pointer;
   }
   .tbtn:hover { color: var(--ink-1); }
-  .cbody { margin-top: 8px; }
+  .cbody { margin-top: 10px; }
   .cbody svg { display: block; width: 100%; height: auto; }
-  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); margin-top: 6px; flex-wrap: wrap; }
-  .legend .key { display: inline-flex; align-items: center; gap: 6px; }
-  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; }
-  .legend .linekey { width: 14px; height: 2px; border-radius: 1px; }
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--ink-2); margin-top: 8px; flex-wrap: wrap; }
+  .legend .key { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .swatch { width: 12px; height: 12px; border-radius: 3px; }
+  .legend .linekey { width: 16px; height: 3px; border-radius: 2px; }
 
-  .datatable { display: none; overflow-x: auto; margin-top: 8px; }
+  /* ---- brand / map marks ---- */
+  .mark { flex: none; display: block; }
+  .mark .mk-bg { fill: currentColor; opacity: 0.15; }
+  .mark .f { fill: currentColor; }
+  .mark .s { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  a.brand { display: inline-flex; align-items: center; gap: 7px; color: inherit; text-decoration: none; }
+  a.brand:hover .bname { text-decoration: underline; }
+  .bname { font-size: 12px; color: var(--ink-muted); }
+
+  /* ---- map cards ---- */
+  .mapgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(232px, 100%), 1fr)); gap: 14px; }
+  .mapcard {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 15px 15px;
+    display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; align-items: center;
+  }
+  .mapcard .mark { grid-row: 1 / span 2; }
+  .mapcard .mname { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; align-self: end; }
+  .mapcard .mmeta { font-size: 13px; color: var(--ink-muted); align-self: start; font-variant-numeric: tabular-nums; }
+  .mapcard .mwr { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 9px; margin-top: 11px; }
+  .mapcard .mwr b { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .mapcard .mwr span { font-size: 13px; color: var(--ink-muted); }
+  .meter {
+    grid-column: 1 / -1; position: relative; height: 9px; border-radius: 5px;
+    background: var(--surface-2); border: 1px solid var(--border); margin-top: 8px; overflow: hidden;
+  }
+  .meter i { position: absolute; inset: 0 auto 0 0; display: block; border-radius: 5px; }
+  .meter u {
+    position: absolute; top: -2px; bottom: -2px; left: 50%; width: 1px;
+    background: var(--axis); text-decoration: none;
+  }
+  .mapcard .mrat { grid-column: 1 / -1; font-size: 13px; color: var(--ink-2); margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .smallmaps { font-size: 13px; color: var(--ink-muted); margin: 12px 0 0; }
+
+  .datatable { display: none; overflow-x: auto; margin-top: 10px; }
   .datatable.open { display: block; }
-  .datatable table { border-collapse: collapse; font-size: 12.5px; width: 100%; }
-  .datatable th, .datatable td { text-align: right; padding: 4px 10px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
+  .datatable table { border-collapse: collapse; font-size: 13.5px; width: 100%; }
+  .datatable th, .datatable td { text-align: right; padding: 5px 11px; border-bottom: 1px solid var(--grid); font-variant-numeric: tabular-nums; }
   .datatable th:first-child, .datatable td:first-child { text-align: left; }
   .datatable th { color: var(--ink-muted); font-weight: 500; }
 
-  svg text { font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink-muted); }
+  svg text { font: 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--ink-muted); }
   svg text.val { fill: var(--ink-2); font-variant-numeric: tabular-nums; }
-  svg text.emph { fill: var(--ink-1); font-weight: 600; }
+  /* halo keeps value labels legible where they sit over a line or a bar */
+  svg text.emph {
+    fill: var(--ink-1); font-weight: 650; font-size: 15px;
+    paint-order: stroke; stroke: var(--surface-1); stroke-width: 4px; stroke-linejoin: round;
+  }
+  svg text.axlab { font-size: 13px; }
   .gridline { stroke: var(--grid); stroke-width: 1; }
-  .axisline { stroke: var(--axis); stroke-width: 1; }
+  .axisline { stroke: var(--axis); stroke-width: 1.25; }
   .s1 { fill: var(--series-1); } .s1s { stroke: var(--series-1); }
   .s2 { fill: var(--series-2); } .s2s { stroke: var(--series-2); }
   .pos { fill: var(--pos); } .neg { fill: var(--neg); }
@@ -139,19 +194,30 @@
   .crosshair { stroke: var(--axis); stroke-width: 1; }
   .hit { fill: transparent; pointer-events: all; }
   .hoverable:hover { filter: brightness(1.15); }
+  .faded { opacity: 0.42; }
 
   .tooltip {
     position: fixed; z-index: 10; pointer-events: none;
     background: var(--surface-1); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 10px; font-size: 12px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.14); max-width: 260px;
+    border-radius: 9px; padding: 9px 11px; font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.16); max-width: 300px;
   }
-  .tooltip .tt-title { color: var(--ink-muted); margin-bottom: 4px; }
-  .tooltip .tt-row { display: flex; align-items: center; gap: 6px; }
-  .tooltip .tt-key { width: 10px; height: 2px; border-radius: 1px; flex: none; }
+  .tooltip .tt-title { color: var(--ink-muted); margin-bottom: 5px; }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 7px; }
+  .tooltip .tt-key { width: 11px; height: 3px; border-radius: 2px; flex: none; }
   .tooltip .tt-val { font-weight: 650; color: var(--ink-1); font-variant-numeric: tabular-nums; }
   .tooltip .tt-lab { color: var(--ink-2); }
-  .note { color: var(--ink-muted); font-size: 12px; margin-top: 24px; }
+
+  .method {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 15px 18px; margin-bottom: 16px; font-size: 14px; color: var(--ink-2);
+  }
+  .method h4 { margin: 0 0 8px; font-size: 14px; color: var(--ink-1); font-weight: 650; }
+  .method ol { margin: 0; padding-left: 20px; }
+  .method li { margin-bottom: 5px; }
+  .method li:last-child { margin-bottom: 0; }
+  .method b { color: var(--ink-1); font-weight: 600; }
+  .note { color: var(--ink-muted); font-size: 13px; margin-top: 30px; }
   .note a { color: var(--series-1); }
   #status { color: var(--ink-2); padding: 40px 0; }
 </style>
@@ -172,13 +238,12 @@
 
   <p id="status">Loading match archive…</p>
   <section class="kpi-row" id="kpis"></section>
-  <main class="grid" id="charts"></main>
+  <main id="sections"></main>
 
   <p class="note">
     Data from the <a href="https://api-public-docs.cs-prod.leetify.com">Leetify public API</a>,
-    synced daily by a GitHub Action. Lobby strength is a z-score composite of the enemy team's
-    preaim, reaction time and counter-strafing — lower crosshair placement error and faster
-    reactions mean a stronger lobby. Leetify rating is shown ×100, as on leetify.com.
+    synced daily by a GitHub Action. Leetify rating is shown ×100, as on leetify.com.
+    Map and queue marks are drawn for this page and aren't official artwork.
   </p>
 </div>
 <div class="tooltip" id="tooltip" hidden></div>
@@ -196,7 +261,7 @@
       else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
       else n.setAttribute(k, v);
     }
-    for (const kid of kids) n.append(kid);
+    for (const kid of kids) if (kid != null) n.append(kid);
     return n;
   }
   function svg(tag, attrs = {}) {
@@ -204,11 +269,117 @@
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
     return n;
   }
-  const fmt1 = (v) => (v == null ? "–" : (Math.round(v * 10) / 10).toLocaleString("en-US", { maximumFractionDigits: 1 }));
+  const fmt1 = (v) => {
+    if (v == null) return "–";
+    const r = Math.round(v * 10) / 10;
+    return (r === 0 ? 0 : r).toLocaleString("en-US", { maximumFractionDigits: 1 });
+  };
   const fmt2 = (v) => (v == null ? "–" : v.toFixed(2));
   const fmtPct = (v) => (v == null ? "–" : Math.round(v * 100) + "%");
   const fmtRating = (v) => (v == null ? "–" : (v >= 0 ? "+" : "") + (v * 100).toFixed(2));
+  const signed = (v, f = fmt1) => {
+    if (v == null) return "–";
+    const s = f(Math.abs(v));
+    return parseFloat(s) === 0 ? s : (v >= 0 ? "+" : "−") + s;   // no "+0" / "−0"
+  };
   const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+  const median = (a) => {
+    const s = a.filter((v) => v != null).slice().sort((x, y) => x - y);
+    return s.length ? s[Math.floor(s.length / 2)] : null;
+  };
+
+  // ---------- marks (hand-drawn, 24×24) ----------
+  const GENERIC_MAP = [["path", { d: "M4 6.5l5-2 6 2 5-2v13l-5 2-6-2-5 2z", class: "s" }],
+                       ["path", { d: "M9 4.5v13M15 6.5v13", class: "s" }]];
+  const MAP_MARKS = {
+    de_mirage:   { accent: "#d8a24a", g: [["path", { d: "M14.8 4.2a8 8 0 1 0 5.2 12.2A8.6 8.6 0 0 1 14.8 4.2z", class: "f" }],
+                                          ["path", { d: "M18.4 4.6l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z", class: "f" }]] },
+    de_inferno:  { accent: "#e2603c", g: [["path", { d: "M12 3.2c2.4 3 .9 5 2.9 7 1.6 1.6 2.6 3 2.6 5.1a5.5 5.5 0 0 1-11 0c0-2.9 1.9-4.4 3-7 .6 1.2 1.4 1.6 2 1 .8-.8-.2-3.6.5-6.1z", class: "f" }]] },
+    de_dust2:    { accent: "#cfa53f", g: [["circle", { cx: 12, cy: 8.6, r: 3.5, class: "f" }],
+                                          ["path", { d: "M3.5 16.6c2.1-2.3 4.1-2.3 5.8 0 1.8-2.5 3.8-2.5 5.8 0 1.4-1.6 2.9-1.8 3.9.3", class: "s" }],
+                                          ["path", { d: "M3.5 20h17", class: "s" }]] },
+    de_overpass: { accent: "#6f93b8", g: [["path", { d: "M2.8 11.2h18.4M12 11.2V6.4", class: "s" }],
+                                          ["path", { d: "M4.8 19.4v-3.6a3.2 3.2 0 0 1 6.4 0v3.6", class: "s" }],
+                                          ["path", { d: "M12.8 19.4v-3.6a3.2 3.2 0 0 1 6.4 0v3.6", class: "s" }],
+                                          ["path", { d: "M2.8 19.4h18.4", class: "s" }]] },
+    de_cache:    { accent: "#77a45f", g: [["path", { d: "M7 6.6h10v10.8c0 1.2-2.2 2.1-5 2.1s-5-.9-5-2.1z", class: "s" }],
+                                          ["ellipse", { cx: 12, cy: 6.6, rx: 5, ry: 1.9, class: "s" }],
+                                          ["path", { d: "M7 11.2h10M7 14.6h10", class: "s" }]] },
+    de_ancient:  { accent: "#3aa189", g: [["path", { d: "M3.6 19.6h16.8", class: "s" }],
+                                          ["path", { d: "M6.6 19.6V16H10v-3.6h4V16h3.4v3.6", class: "s" }],
+                                          ["path", { d: "M10.4 12.4V9h3.2v3.4", class: "s" }]] },
+    de_nuke:     { accent: "#93a6b0", g: [["path", { d: "M12 12 7.5 4.21A9 9 0 0 1 16.5 4.21Z", class: "f" }],
+                                          ["path", { d: "M12 12 7.5 4.21A9 9 0 0 1 16.5 4.21Z", class: "f", transform: "rotate(120 12 12)" }],
+                                          ["path", { d: "M12 12 7.5 4.21A9 9 0 0 1 16.5 4.21Z", class: "f", transform: "rotate(240 12 12)" }],
+                                          ["circle", { cx: 12, cy: 12, r: 2.4, class: "f" }]] },
+    de_train:    { accent: "#7f8a97", g: [["rect", { x: 4, y: 5.4, width: 16, height: 10, rx: 2.2, class: "s" }],
+                                          ["path", { d: "M7.6 8.6h8.8M3.6 15.4h16.8", class: "s" }],
+                                          ["circle", { cx: 8, cy: 18.4, r: 1.8, class: "s" }],
+                                          ["circle", { cx: 16, cy: 18.4, r: 1.8, class: "s" }]] },
+    de_anubis:   { accent: "#c9a12e", g: [["ellipse", { cx: 12, cy: 6.9, rx: 2.7, ry: 3.1, class: "s" }],
+                                          ["path", { d: "M12 10v10.4M6.6 13.4h10.8", class: "s" }]] },
+    de_vertigo:  { accent: "#98a2ad", g: [["path", { d: "M4 20h16M8.6 20V5.4h9M8.6 5.4 5.2 9M17.6 5.4V10", class: "s" }],
+                                          ["rect", { x: 15.9, y: 10, width: 3.4, height: 3.4, rx: 0.8, class: "s" }]] },
+    de_boulder:  { accent: "#a38a6c", g: [["path", { d: "M3 19.6l5.6-9 3.4 4.4 3-3.9 6 8.5z", class: "s" }],
+                                          ["circle", { cx: 17, cy: 6.4, r: 1.7, class: "f" }]] },
+    de_fachwerk: { accent: "#b07a5a", g: [["path", { d: "M4 20V9.6l8-5.6 8 5.6V20z", class: "s" }],
+                                          ["path", { d: "M4 13.8h16M12 13.8V20", class: "s" }]] },
+    de_debris:   { accent: "#8d93a0", g: [["path", { d: "M3.6 20l4.6-11 3 6.4 3.4-8L20.4 20z", class: "s" }]] },
+    de_eldorado: { accent: "#d4a03a", g: [["circle", { cx: 12, cy: 12, r: 3.9, class: "f" }],
+                                          ["path", { d: "M12 3.2v2.6M12 18.2v2.6M3.2 12h2.6M18.2 12h2.6M5.8 5.8l1.8 1.8M16.4 16.4l1.8 1.8M18.2 5.8l-1.8 1.8M7.6 16.4l-1.8 1.8", class: "s" }]] },
+    cs_office:   { accent: "#5f8fc9", g: [["rect", { x: 5, y: 4.4, width: 14, height: 15.2, rx: 1.6, class: "s" }],
+                                          ["path", { d: "M8.4 8h2.6M13 8h2.6M8.4 11.6h2.6M13 11.6h2.6M8.4 15.2h2.6M13 15.2h2.6", class: "s" }]] },
+    cs_shelter:  { accent: "#8b9aa8", g: [["path", { d: "M3.4 12L12 5.4 20.6 12", class: "s" }],
+                                          ["path", { d: "M6 12.4V20h12v-7.6M10 20v-4.6h4V20", class: "s" }]] },
+  };
+  MAP_MARKS.de_dust = MAP_MARKS.de_dust2;
+  MAP_MARKS.cs_italy = MAP_MARKS.de_eldorado;
+  MAP_MARKS.cs_agency = MAP_MARKS.cs_office;
+
+  // unknown maps still get a stable, distinct accent
+  function hashHue(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    return h;
+  }
+  const mapMark = (name) => MAP_MARKS[name] ||
+    { accent: `hsl(${hashHue(name || "map")} 42% 48%)`, g: GENERIC_MAP };
+
+  const QUEUE_MARKS = {
+    faceit:                  { accent: "#f5642d", g: [["path", { d: "M13.8 3.2 6.4 13.6h4.3l-2 7.2 7.6-10.8h-4.3z", class: "f" }]] },
+    matchmaking:             { accent: "#e0a83c", g: [["path", { d: "M12 3.4l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", class: "f" }]] },
+    matchmaking_competitive: { accent: "#4d8fd6", g: [["path", { d: "M12 3.6l7 2.6v5.3c0 4.1-2.9 7.4-7 8.7-4.1-1.3-7-4.6-7-8.7V6.2z", class: "s" }],
+                                                      ["path", { d: "M9.2 11.9l2 2 3.6-3.9", class: "s" }]] },
+    matchmaking_wingman:     { accent: "#3aa189", g: [["circle", { cx: 9, cy: 8.6, r: 2.6, class: "s" }],
+                                                      ["circle", { cx: 16.2, cy: 9.6, r: 2.1, class: "s" }],
+                                                      ["path", { d: "M3.6 19.4c0-3 2.4-5.2 5.4-5.2s5.4 2.2 5.4 5.2", class: "s" }],
+                                                      ["path", { d: "M16 14.4c2.5.2 4.4 2.3 4.4 5", class: "s" }]] },
+  };
+  const queueMark = (id) => QUEUE_MARKS[id] || { accent: "#898781", g: GENERIC_MAP };
+
+  const LEETIFY_MARK = { accent: "var(--brand-leetify)", g: [
+    ["circle", { cx: 12, cy: 12, r: 6.4, class: "s" }],
+    ["path", { d: "M12 2.6v4.2M12 17.2v4.2M2.6 12h4.2M17.2 12h4.2", class: "s" }],
+    ["circle", { cx: 12, cy: 12, r: 1.8, class: "f" }],
+  ] };
+
+  function markEl(mark, size) {
+    const s = svg("svg", { viewBox: "0 0 24 24", width: size, height: size, class: "mark", "aria-hidden": "true", focusable: "false" });
+    s.style.color = mark.accent;
+    s.append(svg("rect", { x: 0, y: 0, width: 24, height: 24, rx: 7, class: "mk-bg" }));
+    for (const [tag, attrs] of mark.g) s.append(svg(tag, attrs));
+    return s;
+  }
+  // same mark, as a <g> that can be dropped inside a bigger chart SVG
+  function markGroup(mark, x, y, size) {
+    const g = svg("g", { transform: `translate(${x} ${y}) scale(${size / 24})`, class: "mark" });
+    g.style.color = mark.accent;
+    g.append(svg("rect", { x: 0, y: 0, width: 24, height: 24, rx: 7, class: "mk-bg" }));
+    for (const [tag, attrs] of mark.g) g.append(svg(tag, attrs));
+    return g;
+  }
+  const leetifyBrand = () => el("a", { class: "brand", href: "https://leetify.com", target: "_blank", rel: "noopener" },
+    markEl(LEETIFY_MARK, 26), el("span", { class: "bname" }, "Leetify"));
 
   // ---------- data ----------
   let PLAYERS = [{ steam64_id: "main", name: "", path: "." }];
@@ -313,8 +484,19 @@
   const seriesColor = (cls) => getComputedStyle(document.body).getPropertyValue(
     { s1: "--series-1", s2: "--series-2", pos: "--pos", neg: "--neg", demph: "--demph" }[cls] || "--series-1").trim();
 
-  // ---------- chart card ----------
-  function card(title, subtitle, { wide = false } = {}) {
+  // ---------- layout scaffolding ----------
+  function section(title, subtitle, { mark = null, brand = null } = {}) {
+    const grid = el("div", { class: "grid" });
+    const head = el("div", { class: "shead" });
+    if (mark) head.append(markEl(mark, 28));
+    head.append(el("h2", {}, title));
+    if (brand) head.append(brand);
+    const sec = el("section", { class: "sect" }, head, el("p", { class: "ssub" }, subtitle || ""));
+    sec.append(grid);
+    return { sec, grid, before: (node) => sec.insertBefore(node, grid) };
+  }
+
+  function card(title, subtitle, { wide = false, mark = null, brand = null } = {}) {
     const body = el("div", { class: "cbody" });
     const tableWrap = el("div", { class: "datatable" });
     const btn = el("button", { class: "tbtn", "aria-expanded": "false", onclick: () => {
@@ -322,9 +504,13 @@
       btn.setAttribute("aria-expanded", String(open));
       btn.textContent = open ? "Chart only" : "Table";
     } }, "Table");
-    const fig = el("figure", { class: "card" + (wide ? " wide" : "") },
-      el("div", { class: "card-head" }, el("h2", {}, title), btn, el("span", { class: "csub" }, subtitle || "")),
-      body, tableWrap);
+    const right = el("div", { class: "chead-right" });
+    if (brand) right.append(brand);
+    right.append(btn);
+    const head = el("div", { class: "card-head" },
+      mark ? markEl(mark, 26) : el("span"), el("h3", {}, title), right,
+      el("span", { class: "csub" }, subtitle || ""));
+    const fig = el("figure", { class: "card" + (wide ? " wide" : "") }, head, body, tableWrap);
     return {
       fig, body,
       setTable(headers, rows) {
@@ -346,7 +532,7 @@
         const lg = el("div", { class: "legend" });
         items.forEach((it) => {
           const sw = el("span", { class: it.line ? "linekey" : "swatch" });
-          sw.style.background = seriesColor(it.cls);
+          sw.style.background = it.color || seriesColor(it.cls);
           lg.append(el("span", { class: "key" }, sw, it.label));
         });
         fig.insertBefore(lg, tableWrap);
@@ -354,11 +540,15 @@
     };
   }
 
+  // chart geometry — viewBox units render ~1:1 at these card widths
+  const CW = 620;        // standard card chart width
+  const CWW = 1290;      // full-bleed card chart width
+
   // ---------- line chart (single series, crosshair tooltip) ----------
-  function lineChart(container, pts, { fmt = fmt1, baseline = null, height = 190 } = {}) {
+  function lineChart(container, pts, { fmt = fmt1, baseline = null, height = 250 } = {}) {
     container.replaceChildren();
     if (pts.length < 2) { container.append(el("p", { class: "csub" }, "Not enough matches in this slice.")); return; }
-    const W = 560, H = height, m = { t: 12, r: 14, b: 26, l: 44 };
+    const W = CW, H = height, m = { t: 16, r: 18, b: 34, l: 58 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const xs = pts.map((p) => p.x.getTime());
     const ys = pts.map((p) => p.y);
@@ -370,10 +560,9 @@
     const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * ih;
 
     const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
-    const yticks = niceTicks(y0, y1, 4);
-    for (const v of yticks) {
+    for (const v of niceTicks(y0, y1, 4)) {
       s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }));
-      const t = svg("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", class: "val" });
+      const t = svg("text", { x: m.l - 10, y: Y(v) + 5, "text-anchor": "end", class: "val" });
       t.textContent = fmt(v); s.append(t);
     }
     if (baseline != null && baseline >= y0 && baseline <= y1)
@@ -382,23 +571,23 @@
     const longSpan = (x1 - x0) > 300 * 86400e3;
     months.forEach((d, i) => {
       const anchor = i === 0 ? "start" : i === months.length - 1 ? "end" : "middle";
-      const t = svg("text", { x: X(d.getTime()), y: H - 8, "text-anchor": anchor });
+      const t = svg("text", { x: X(d.getTime()), y: H - 10, "text-anchor": anchor });
       t.textContent = longSpan
         ? d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
         : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
       s.append(t);
     });
     const dAttr = pts.map((p, i) => (i ? "L" : "M") + X(p.x.getTime()).toFixed(1) + " " + Y(p.y).toFixed(1)).join(" ");
-    s.append(svg("path", { d: dAttr, fill: "none", class: "s1s", "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    s.append(svg("path", { d: dAttr, fill: "none", class: "s1s", "stroke-width": 2.4, "stroke-linejoin": "round", "stroke-linecap": "round" }));
     const last = pts[pts.length - 1];
-    s.append(svg("circle", { cx: X(last.x.getTime()), cy: Y(last.y), r: 4, class: "s1 ring" }));
-    let labY = Y(last.y) - 10;
-    if (labY < m.t + 10) labY = Y(last.y) + 20;
-    const endLab = svg("text", { x: X(last.x.getTime()) - 6, y: labY, "text-anchor": "end", class: "val emph" });
+    s.append(svg("circle", { cx: X(last.x.getTime()), cy: Y(last.y), r: 5, class: "s1 ring" }));
+    let labY = Y(last.y) - 12;
+    if (labY < m.t + 12) labY = Y(last.y) + 24;
+    const endLab = svg("text", { x: X(last.x.getTime()) - 8, y: labY, "text-anchor": "end", class: "val emph" });
     endLab.textContent = fmt(last.y); s.append(endLab);
 
     const cross = svg("line", { y1: m.t, y2: m.t + ih, class: "crosshair", visibility: "hidden" });
-    const dot = svg("circle", { r: 4, class: "s1 ring", visibility: "hidden" });
+    const dot = svg("circle", { r: 5, class: "s1 ring", visibility: "hidden" });
     s.append(cross, dot);
     const overlay = svg("rect", { x: m.l, y: m.t, width: iw, height: ih, class: "hit", tabindex: 0 });
     function nearest(px) {
@@ -438,33 +627,43 @@
     return out;
   }
 
+  // Diverging scales stay anchored at zero but only span the side(s) the data
+  // actually uses, so an all-positive series doesn't waste half the panel.
+  function zeroAnchoredRange(values) {
+    const lo = Math.min(0, ...values), hi = Math.max(0, ...values);
+    const pad = ((hi - lo) || 1) * 0.06;
+    return [lo < 0 ? lo - pad : 0, hi > 0 ? hi + pad : 0];
+  }
+
   // ---------- horizontal bars ----------
-  function hBars(container, items, { fmt = fmt1, diverging = false, max = null } = {}) {
+  function hBars(container, items, { fmt = fmt1, diverging = false, max = null, labelW = 150, width = CW } = {}) {
     container.replaceChildren();
     if (!items.length) { container.append(el("p", { class: "csub" }, "No data in this slice.")); return; }
-    const W = 560, rowH = 30, m = { t: 6, r: 52, b: 6, l: 108 };
+    const W = width, rowH = 38, m = { t: 8, r: 78, b: 8, l: labelW };
     const H = m.t + m.b + rowH * items.length;
     const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
     const iw = W - m.l - m.r;
     let lo = 0, hi = max != null ? max : Math.max(...items.map((i) => i.value));
-    if (diverging) { const a = Math.max(...items.map((i) => Math.abs(i.value))) || 1; lo = -a; hi = a; }
+    if (diverging) [lo, hi] = zeroAnchoredRange(items.map((i) => i.value));
     const X = (v) => m.l + ((v - lo) / (hi - lo || 1)) * iw;
     if (diverging) s.append(svg("line", { x1: X(0), x2: X(0), y1: m.t, y2: H - m.b, class: "axisline" }));
+    const barH = 22;
     items.forEach((it, i) => {
-      const y = m.t + i * rowH + (rowH - 18) / 2;
-      const lab = svg("text", { x: m.l - 10, y: y + 13, "text-anchor": "end", class: "val" });
+      const y = m.t + i * rowH + (rowH - barH) / 2;
+      let tx = m.l - 12;
+      if (it.mark) { s.append(markGroup(it.mark, 2, y - 1, 24)); tx = 32; }
+      const lab = svg("text", { x: tx, y: y + barH / 2 + 5, "text-anchor": it.mark ? "start" : "end", class: "val" });
       lab.textContent = it.label; s.append(lab);
       const v0 = diverging ? Math.min(X(0), X(it.value)) : X(0);
       const w = Math.abs(X(it.value) - X(0));
-      const cls = diverging ? (it.value >= 0 ? "pos" : "neg") : "s1";
+      const cls = it.cls || (diverging ? (it.value >= 0 ? "pos" : "neg") : "s1");
       const positiveEnd = !diverging || it.value >= 0;
-      const bar = svg("path", { d: roundedBar(v0, y, Math.max(w, 1), 18, positiveEnd), class: cls + " hoverable" });
-      s.append(bar);
-      const vx = positiveEnd ? v0 + w + 8 : X(0) + 8;
-      const vt = svg("text", { x: vx, y: y + 13, "text-anchor": "start", class: "val" });
+      s.append(svg("path", { d: roundedBar(v0, y, Math.max(w, 1), barH, positiveEnd), class: cls + " hoverable" + (it.faded ? " faded" : "") }));
+      const vx = positiveEnd ? v0 + w + 10 : X(0) + 10;
+      const vt = svg("text", { x: vx, y: y + barH / 2 + 5, "text-anchor": "start", class: "val" });
       vt.textContent = fmt(it.value); s.append(vt);
       const hit = svg("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, class: "hit", tabindex: 0 });
-      const tip = (evt) => showTip(evt, it.label, (it.tip || [{ value: fmt(it.value), label: "" }]).map((r) => ({ ...r, color: r.color || seriesColor(cls) })));
+      const tip = (evt) => showTip(evt, it.tipTitle || it.label, (it.tip || [{ value: fmt(it.value), label: "" }]).map((r) => ({ ...r, color: r.color || seriesColor(cls) })));
       hit.addEventListener("pointermove", tip);
       hit.addEventListener("focus", (e) => tip({ clientX: 200, clientY: e.target.getBoundingClientRect().top }));
       hit.addEventListener("pointerleave", hideTip);
@@ -475,45 +674,57 @@
   }
   // rounded data-end, square baseline end
   function roundedBar(x, y, w, h, roundRight) {
-    const r = Math.min(4, w);
+    const r = Math.min(5, w);
     if (roundRight)
       return `M${x} ${y} h${w - r} a${r} ${r} 0 0 1 ${r} ${r} v${h - 2 * r} a${r} ${r} 0 0 1 -${r} ${r} h-${w - r} Z`;
     return `M${x + w} ${y} h-${w - r} a${r} ${r} 0 0 0 -${r} ${r} v${h - 2 * r} a${r} ${r} 0 0 0 ${r} ${r} h${w - r} Z`;
   }
   function roundedCol(x, y, w, h) {
-    const r = Math.min(4, h, w / 2);
+    const r = Math.min(5, h, w / 2);
     return `M${x} ${y + h} v-${h - r} a${r} ${r} 0 0 1 ${r} -${r} h${w - 2 * r} a${r} ${r} 0 0 1 ${r} ${r} v${h - r} Z`;
   }
 
   // ---------- vertical columns ----------
-  function vCols(container, items, { fmt = fmt1, diverging = false, height = 190 } = {}) {
+  function vCols(container, items, { fmt = fmt1, diverging = false, height = 250, width = CW } = {}) {
     container.replaceChildren();
     if (!items.length) { container.append(el("p", { class: "csub" }, "No data in this slice.")); return; }
-    const W = 560, H = height, m = { t: 18, r: 14, b: 26, l: 44 };
+    const hasMarks = items.some((i) => i.mark);
+    const hasSubs = items.some((i) => i.sub);
+    // room for the mark, the label, its sub-label, and a value label hanging
+    // below a negative column
+    const labelBand = 22 + (hasMarks ? 30 : 0) + (hasSubs ? 20 : 0);
+    const W = width, H = height, m = { t: 26, r: 18, b: labelBand + (diverging ? 26 : 8), l: 58 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
     let lo = 0, hi = Math.max(...items.map((i) => i.value));
-    if (diverging) { const a = Math.max(...items.map((i) => Math.abs(i.value))) || 1; lo = -a; hi = a; }
+    if (diverging) [lo, hi] = zeroAnchoredRange(items.map((i) => i.value));
     if (hi === lo) hi = lo + 1;
     const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * ih;
     const band = iw / items.length;
-    const bw = Math.min(24, band - 8);
-    s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(diverging ? 0 : lo), y2: Y(diverging ? 0 : lo), class: "axisline" }));
+    const bw = Math.min(58, band - 16);
+    const base = Y(diverging ? 0 : lo);
+    s.append(svg("line", { x1: m.l, x2: W - m.r, y1: base, y2: base, class: "axisline" }));
     items.forEach((it, i) => {
       const cx = m.l + band * i + band / 2;
-      const cls = diverging ? (it.value >= 0 ? "pos" : "neg") : "s1";
+      const cls = it.cls || (diverging ? (it.value >= 0 ? "pos" : "neg") : "s1");
       const top = Y(Math.max(it.value, 0)), bot = Y(Math.min(it.value, 0));
       const h = Math.max(Math.abs(top - bot), 1);
       let d;
       if (!diverging || it.value >= 0) d = roundedCol(cx - bw / 2, top, bw, h);
       else {
-        const r = Math.min(4, h, bw / 2);
+        const r = Math.min(5, h, bw / 2);
         d = `M${cx - bw / 2} ${top} v${h - r} a${r} ${r} 0 0 0 ${r} ${r} h${bw - 2 * r} a${r} ${r} 0 0 0 ${r} -${r} v-${h - r} Z`;
       }
       s.append(svg("path", { d, class: cls + " hoverable" }));
-      const lt = svg("text", { x: cx, y: H - 8, "text-anchor": "middle" });
+      const labelTop = H - m.b + (diverging ? 26 : 8);   // first line of the label block
+      if (it.mark) s.append(markGroup(it.mark, cx - 13, labelTop, 26));
+      const lt = svg("text", { x: cx, y: labelTop + (hasMarks ? 30 : 0) + 15, "text-anchor": "middle" });
       lt.textContent = it.label; s.append(lt);
-      const vt = svg("text", { x: cx, y: (it.value >= 0 ? top - 6 : bot + 14), "text-anchor": "middle", class: "val" });
+      if (it.sub) {
+        const st = svg("text", { x: cx, y: labelTop + (hasMarks ? 30 : 0) + 33, "text-anchor": "middle", "font-size": 13 });
+        st.textContent = it.sub; s.append(st);
+      }
+      const vt = svg("text", { x: cx, y: (it.value >= 0 ? top - 8 : bot + 18), "text-anchor": "middle", class: "val emph" });
       vt.textContent = fmt(it.value); s.append(vt);
       const hit = svg("rect", { x: m.l + band * i, y: m.t, width: band, height: ih, class: "hit", tabindex: 0 });
       const tip = (evt) => showTip(evt, it.tipTitle || it.label, (it.tip || [{ value: fmt(it.value), label: "" }]).map((r) => ({ ...r, color: r.color || seriesColor(cls) })));
@@ -526,37 +737,85 @@
     container.append(s);
   }
 
+  // ---------- paired horizontal bars (two series per row) ----------
+  function pairedBars(container, items, series, { fmt = fmt2, labelW = 168, width = CW } = {}) {
+    container.replaceChildren();
+    if (!items.length) { container.append(el("p", { class: "csub" }, "No data in this slice.")); return; }
+    const W = width, rowH = 52, m = { t: 8, r: 62, b: 8, l: labelW };
+    const H = m.t + m.b + rowH * items.length;
+    const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+    const iw = W - m.l - m.r;
+    const hi = Math.max(...items.flatMap((i) => [i.a, i.b])) || 1;
+    const X = (v) => m.l + (v / hi) * iw;
+    const barH = 17;
+    items.forEach((it, i) => {
+      const y0 = m.t + i * rowH + (rowH - barH * 2 - 5) / 2;
+      const lab = svg("text", { x: m.l - 12, y: y0 + barH + 3, "text-anchor": "end", class: "val" });
+      lab.textContent = it.label; s.append(lab);
+      [["a", 0, series[0]], ["b", barH + 5, series[1]]].forEach(([key, dy, ser]) => {
+        const w = Math.max(X(it[key]) - m.l, 1);
+        s.append(svg("path", { d: roundedBar(m.l, y0 + dy, w, barH, true), class: ser.cls + " hoverable" }));
+        const vt = svg("text", { x: m.l + w + 10, y: y0 + dy + barH - 4, "text-anchor": "start", class: "val" });
+        vt.textContent = fmt(it[key]); s.append(vt);
+      });
+      const hit = svg("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, class: "hit", tabindex: 0 });
+      const tip = (evt) => showTip(evt, it.label, [
+        { value: fmt(it.a), label: series[0].label, color: seriesColor(series[0].cls) },
+        { value: fmt(it.b), label: series[1].label, color: seriesColor(series[1].cls) },
+      ]);
+      hit.addEventListener("pointermove", tip);
+      hit.addEventListener("focus", (e) => tip({ clientX: 200, clientY: e.target.getBoundingClientRect().top }));
+      hit.addEventListener("pointerleave", hideTip);
+      hit.addEventListener("blur", hideTip);
+      s.append(hit);
+    });
+    container.append(s);
+  }
+
   // ---------- scatter ----------
-  function scatter(container, pts, { xLabel, yLabel, xFmt = fmt2, yFmt = fmt2, height = 260 } = {}) {
+  function scatter(container, pts, { xLabel, yLabel, xFmt = fmt2, yFmt = fmt2, height = 400, trend = true } = {}) {
     container.replaceChildren();
     if (pts.length < 3) { container.append(el("p", { class: "csub" }, "Not enough matches in this slice.")); return; }
-    const W = 1120, H = height, m = { t: 12, r: 16, b: 34, l: 48 };
+    const W = CWW, H = height, m = { t: 16, r: 20, b: 52, l: 66 };
     const iw = W - m.l - m.r, ih = H - m.t - m.b;
     const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
     let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
     const xs2 = (x1 - x0) || 1, ys2 = (y1 - y0) || 1;
-    x0 -= xs2 * 0.06; x1 += xs2 * 0.06; y0 -= ys2 * 0.1; y1 += ys2 * 0.1;
+    x0 -= xs2 * 0.05; x1 += xs2 * 0.05; y0 -= ys2 * 0.08; y1 += ys2 * 0.08;
     const X = (v) => m.l + ((v - x0) / (x1 - x0)) * iw;
     const Y = (v) => m.t + (1 - (v - y0) / (y1 - y0)) * ih;
     const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
-    for (const v of niceTicks(y0, y1, 4)) {
+    for (const v of niceTicks(y0, y1, 5)) {
       s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), class: "gridline" }));
-      const t = svg("text", { x: m.l - 8, y: Y(v) + 4, "text-anchor": "end", class: "val" });
+      const t = svg("text", { x: m.l - 10, y: Y(v) + 5, "text-anchor": "end", class: "val" });
       t.textContent = yFmt(v); s.append(t);
     }
     if (y0 < 0 && y1 > 0) s.append(svg("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), class: "axisline" }));
     if (x0 < 0 && x1 > 0) s.append(svg("line", { x1: X(0), x2: X(0), y1: m.t, y2: m.t + ih, class: "axisline" }));
-    for (const v of niceTicks(x0, x1, 6)) {
-      const t = svg("text", { x: X(v), y: H - 18, "text-anchor": "middle", class: "val" });
+    for (const v of niceTicks(x0, x1, 7)) {
+      const t = svg("text", { x: X(v), y: H - 28, "text-anchor": "middle", class: "val" });
       t.textContent = xFmt(v); s.append(t);
     }
-    const xl = svg("text", { x: m.l + iw / 2, y: H - 2, "text-anchor": "middle" });
+    const xl = svg("text", { x: m.l + iw / 2, y: H - 6, "text-anchor": "middle", class: "axlab" });
     xl.textContent = xLabel; s.append(xl);
-    const yl = svg("text", { x: 12, y: m.t + 4, "text-anchor": "start" });
+    const yl = svg("text", { x: 14, y: m.t + 4, "text-anchor": "start", class: "axlab" });
     yl.textContent = yLabel; s.append(yl);
-    for (const p of pts) s.append(svg("circle", { cx: X(p.x), cy: Y(p.y), r: 4.5, class: p.cls + " ring" }));
+
+    if (trend && pts.length >= 8) {                       // least-squares fit
+      const mx = mean(xs), my = mean(ys);
+      const den = xs.reduce((s2, v) => s2 + (v - mx) ** 2, 0);
+      if (den > 0) {
+        const b = xs.reduce((s2, v, i) => s2 + (v - mx) * (ys[i] - my), 0) / den;
+        const fy = (v) => my + b * (v - mx);
+        s.append(svg("line", {
+          x1: X(x0), y1: Y(fy(x0)), x2: X(x1), y2: Y(fy(x1)),
+          stroke: "var(--axis)", "stroke-width": 2, "stroke-dasharray": "7 5",
+        }));
+      }
+    }
+    for (const p of pts) s.append(svg("circle", { cx: X(p.x), cy: Y(p.y), r: 6, class: p.cls + " ring" }));
     for (const p of pts) {
-      const hit = svg("circle", { cx: X(p.x), cy: Y(p.y), r: 13, class: "hit", tabindex: 0 });
+      const hit = svg("circle", { cx: X(p.x), cy: Y(p.y), r: 14, class: "hit", tabindex: 0 });
       const tip = (evt) => showTip(evt, p.title, p.tip.map((r) => ({ ...r, color: r.color || seriesColor(p.cls) })));
       hit.addEventListener("pointermove", tip);
       hit.addEventListener("focus", (e) => tip({ clientX: 300, clientY: e.target.getBoundingClientRect().top }));
@@ -580,10 +839,10 @@
 
   async function switchPlayer(option) {
     const entry = PLAYERS.find((p) => p.steam64_id === option.id) || PLAYERS[0];
-    const charts = $("charts");
-    charts.style.opacity = "0.45";   // hold previous render while refetching
+    const root = $("sections");
+    root.style.opacity = "0.45";   // hold previous render while refetching
     if (await loadPlayer(entry)) renderAll();
-    charts.style.opacity = "";
+    root.style.opacity = "";
   }
 
   // ---------- derived helpers ----------
@@ -592,12 +851,33 @@
     return mean(arr.slice(lo, i + 1).map(acc));
   });
   const MAPLABEL = (n) => (n || "").replace(/^(de|cs)_/, "").replace(/^\w/, (c) => c.toUpperCase());
+  const winrate = (a) => mean(a.map((m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0)));
+
+  function groupBy(ms, keyFn) {
+    const g = new Map();
+    for (const m of ms) {
+      const k = keyFn(m);
+      if (!g.has(k)) g.set(k, []);
+      g.get(k).push(m);
+    }
+    return g;
+  }
 
   function filtered() {
     const r = RANGES.find((x) => x.id === state.range);
     const cutoff = r.days ? new Date(latest.getTime() - r.days * 86400e3) : null;
     return MATCHES.filter((m) =>
       (!cutoff || m.date >= cutoff) && (state.queue === "all" || m.data_source === state.queue));
+  }
+
+  function corr(a, b) {
+    const p = a.map((v, i) => [v, b[i]]).filter(([x, y]) => x != null && y != null);
+    if (p.length < 8) return null;
+    const mx = mean(p.map((r) => r[0])), my = mean(p.map((r) => r[1]));
+    const sx = Math.sqrt(p.reduce((s, r) => s + (r[0] - mx) ** 2, 0));
+    const sy = Math.sqrt(p.reduce((s, r) => s + (r[1] - my) ** 2, 0));
+    if (!sx || !sy) return null;
+    return p.reduce((s, r) => s + (r[0] - mx) * (r[1] - my), 0) / (sx * sy);
   }
 
   // ---------- render ----------
@@ -614,16 +894,16 @@
     const ms = filtered();
     $("filterNote").textContent = `${ms.length} matches in view`;
     renderKpis(ms);
-    const charts = $("charts");
-    charts.replaceChildren();
-    if (!ms.length) { charts.append(el("p", { class: "csub" }, "No matches match the current filters.")); return; }
+    const root = $("sections");
+    root.replaceChildren();
+    if (!ms.length) { root.append(el("p", { class: "csub" }, "No matches match the current filters.")); return; }
 
-    renderForm(charts, ms);
-    renderMechanics(charts, ms);
-    renderMaps(charts, ms);
-    renderQueues(charts, ms);
-    renderSessions(charts, ms);
-    renderOpponents(charts, ms);
+    renderForm(root, ms);
+    renderMaps(root, ms);
+    renderQueues(root, ms);
+    renderMechanics(root, ms);
+    renderSessions(root, ms);
+    renderLobby(root, ms);
   }
 
   function renderKpis(ms) {
@@ -639,7 +919,7 @@
     const tiles = [
       { label: "Matches", value: String(ms.length) },
       { label: "Record", value: `${w}–${l}` + (t ? `–${t}` : ""), delta: ms.length ? fmtPct(w / ms.length) + " winrate" : null },
-      delta("Leetify rating", (a) => mean(a.map((m) => m.me.leetify_rating)), fmtRating, true),
+      { ...delta("Leetify rating", (a) => mean(a.map((m) => m.me.leetify_rating)), fmtRating, true), mark: LEETIFY_MARK },
       { label: "K/D", value: deaths ? fmt2(kills / deaths) : "–" },
       delta("ADR", (a) => mean(a.map((m) => m.me.dpr)), (v) => fmt1(v), true),
       delta("Headshot %", (a) => mean(a.map((m) => m.me.accuracy_head)), (v) => fmt1(v * 100) + "%", true),
@@ -655,198 +935,462 @@
       return tile;
     }
     tiles.forEach((tl) => {
-      const d = el("div", { class: "tile" }, el("div", { class: "tlabel" }, tl.label), el("div", { class: "tvalue" }, tl.value));
+      const lab = el("div", { class: "tlabel" });
+      if (tl.mark) lab.append(markEl(tl.mark, 18));
+      lab.append(el("span", {}, tl.label));
+      const d = el("div", { class: "tile" }, lab, el("div", { class: "tvalue" }, tl.value));
       if (tl.delta) d.append(el("div", { class: "tdelta " + (tl.deltaClass || "") }, tl.delta));
       k.append(d);
     });
   }
 
+  // ---------- form ----------
   function renderForm(root, ms) {
     const w = Math.min(20, Math.max(5, Math.floor(ms.length / 3)));
-    const c1 = card("Form — Leetify rating", `rolling ${w}-game average`);
-    const roll = rolling(ms, w, (m) => m.me.leetify_rating * 100);
-    lineChart(c1.body, ms.map((m, i) => ({ x: m.date, y: roll[i], label: "rolling rating" })), { fmt: (v) => (v >= 0 ? "+" : "") + fmt1(v), baseline: 0 });
-    c1.setTable(["Date", "Map", "Queue", "Result", "Score", "Rating", `Rolling ${w}`],
-      ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), queueLabel(m.data_source), m.outcome, `${m.score[0]}–${m.score[1]}`, fmtRating(m.me.leetify_rating), (roll[i] >= 0 ? "+" : "") + fmt1(roll[i])]));
-    root.append(c1.fig);
+    const s = section("Form", `Rolling ${w}-game averages. The flat line is the break-even mark — zero rating, 50% winrate.`);
 
-    const c2 = card("Form — winrate", `rolling ${w}-game average`);
+    const c1 = card("Leetify rating", `rolling ${w}-game average, ×100`, { mark: LEETIFY_MARK, brand: leetifyBrand() });
+    const roll = rolling(ms, w, (m) => m.me.leetify_rating * 100);
+    lineChart(c1.body, ms.map((m, i) => ({ x: m.date, y: roll[i], label: "rolling rating" })), { fmt: (v) => signed(v), baseline: 0 });
+    c1.setTable(["Date", "Map", "Queue", "Result", "Score", "Rating", `Rolling ${w}`],
+      ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), queueLabel(m.data_source), m.outcome, `${m.score[0]}–${m.score[1]}`, fmtRating(m.me.leetify_rating), signed(roll[i])]));
+    s.grid.append(c1.fig);
+
+    const c2 = card("Winrate", `rolling ${w}-game average`);
     const rollW = rolling(ms, w, (m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0));
     lineChart(c2.body, ms.map((m, i) => ({ x: m.date, y: rollW[i] * 100, label: "rolling winrate" })), { fmt: (v) => fmt1(v) + "%", baseline: 50 });
     c2.setTable(["Date", "Result", `Rolling ${w} winrate`], ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), m.outcome, fmt1(rollW[i] * 100) + "%"]));
-    root.append(c2.fig);
+    s.grid.append(c2.fig);
+    root.append(s.sec);
   }
 
-  function renderMechanics(root, ms) {
-    const w = Math.min(10, Math.max(3, Math.floor(ms.length / 4)));
-    const defs = [
-      { title: "Preaim (crosshair placement)", sub: "degrees off target — lower is better", acc: (m) => m.me.preaim, fmt: fmt1 },
-      { title: "Reaction time", sub: "milliseconds — lower is better", acc: (m) => m.me.reaction_time * 1000, fmt: (v) => fmt1(v) },
-      { title: "Headshot accuracy", sub: "% of hits that are headshots", acc: (m) => m.me.accuracy_head * 100, fmt: (v) => fmt1(v) + "%" },
-      { title: "Counter-strafing", sub: "% of shots while properly stopped", acc: (m) => m.me.counter_strafing_shots_good_ratio * 100, fmt: (v) => fmt1(v) + "%" },
-    ];
-    for (const d of defs) {
-      const c = card(d.title, `${d.sub} · rolling ${w}`);
-      const roll = rolling(ms, w, d.acc);
-      lineChart(c.body, ms.map((m, i) => ({ x: m.date, y: roll[i] })), { fmt: d.fmt, height: 160 });
-      c.setTable(["Date", "Value", `Rolling ${w}`], ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), d.fmt(d.acc(m)), d.fmt(roll[i])]));
-      root.append(c.fig);
-    }
-  }
-
-  function groupBy(ms, keyFn) {
-    const g = new Map();
-    for (const m of ms) {
-      const k = keyFn(m);
-      if (!g.has(k)) g.set(k, []);
-      g.get(k).push(m);
-    }
-    return g;
-  }
-  const winrate = (a) => mean(a.map((m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0)));
-
+  // ---------- maps ----------
   function renderMaps(root, ms) {
     const MIN = 3;
-    const groups = [...groupBy(ms, (m) => m.map_name)].filter(([, a]) => a.length >= MIN)
-      .sort((a, b) => b[1].length - a[1].length);
-    const small = [...groupBy(ms, (m) => m.map_name)].filter(([, a]) => a.length < MIN);
+    const all = [...groupBy(ms, (m) => m.map_name)].sort((a, b) => b[1].length - a[1].length);
+    const groups = all.filter(([, a]) => a.length >= MIN);
+    const small = all.filter(([, a]) => a.length < MIN);
+    const overall = winrate(ms) * 100;
 
-    const c1 = card("Winrate by map", `maps with ≥${MIN} games`);
-    hBars(c1.body, groups.map(([name, a]) => ({
-      label: `${MAPLABEL(name)} (${a.length})`, value: winrate(a) * 100,
-      tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
-            { value: `${a.filter((m) => m.outcome === "win").length}–${a.filter((m) => m.outcome === "loss").length}`, label: "record" }],
-    })), { fmt: (v) => Math.round(v) + "%", max: 100 });
-    c1.setTable(["Map", "Games", "W", "L", "T", "Winrate"], groups.map(([name, a]) => [
-      MAPLABEL(name), a.length,
-      a.filter((m) => m.outcome === "win").length, a.filter((m) => m.outcome === "loss").length,
-      a.filter((m) => m.outcome === "tie").length, fmt1(winrate(a) * 100) + "%"]));
-    if (small.length) c1.fig.append(el("div", { class: "csub" },
-      "Small samples: " + small.map(([n, a]) => `${MAPLABEL(n)} (${a.length})`).join(", ")));
-    root.append(c1.fig);
+    const s = section("Maps", `Winrate on every map with at least ${MIN} games, against your ${fmt1(overall)}% overall. The tick on each meter is 50%.`);
 
-    const c2 = card("Your rating by map", "avg Leetify rating — positive means you outperform");
+    const cards = el("div", { class: "mapgrid" });
+    for (const [name, a] of groups) {
+      const wr = winrate(a) * 100;
+      const mk = mapMark(name);
+      const w = a.filter((m) => m.outcome === "win").length;
+      const l = a.filter((m) => m.outcome === "loss").length;
+      const t = a.length - w - l;
+      const rating = mean(a.map((m) => m.me.leetify_rating));
+      const fill = el("i");
+      fill.style.width = Math.max(wr, 2) + "%";
+      fill.style.background = wr >= 50 ? "var(--pos)" : "var(--neg)";
+      const c = el("article", { class: "mapcard" },
+        markEl(mk, 42),
+        el("div", { class: "mname" }, MAPLABEL(name)),
+        el("div", { class: "mmeta" }, `${a.length} games · ${w}–${l}${t ? `–${t}` : ""}`),
+        el("div", { class: "mwr" }, el("b", {}, Math.round(wr) + "%"),
+          el("span", {}, signed(wr - overall) + " pts vs overall")),
+        el("div", { class: "meter" }, fill, el("u")),
+        el("div", { class: "mrat" }, `${fmtRating(rating)} avg Leetify rating · ${fmt1(mean(a.map((m) => m.me.dpr)))} ADR`));
+      c.style.borderColor = "color-mix(in srgb, " + mk.accent + " 34%, var(--border))";
+      cards.append(c);
+    }
+    s.before(cards);
+    if (small.length) s.before(el("p", { class: "smallmaps" },
+      "Too few games to rate: " + small.map(([n, a]) => `${MAPLABEL(n)} (${a.length})`).join(", ")));
+
+    const c2 = card("Your rating by map", "average Leetify rating — positive means you outperform the lobby", { mark: LEETIFY_MARK });
     hBars(c2.body, groups.map(([name, a]) => ({
       label: `${MAPLABEL(name)} (${a.length})`, value: mean(a.map((m) => m.me.leetify_rating)) * 100,
+      mark: mapMark(name),
       tip: [{ value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
-            { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "avg K/D" }],
-    })), { fmt: (v) => (v >= 0 ? "+" : "") + fmt1(v), diverging: true });
-    c2.setTable(["Map", "Games", "Avg rating", "Avg K/D", "Avg ADR"], groups.map(([name, a]) => [
-      MAPLABEL(name), a.length, fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+            { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "avg K/D" },
+            { value: fmt1(winrate(a) * 100) + "%", label: "winrate" }],
+    })), { fmt: (v) => signed(v), diverging: true });
+    c2.setTable(["Map", "Games", "Winrate", "Avg rating", "Avg K/D", "Avg ADR"], groups.map(([name, a]) => [
+      MAPLABEL(name), a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
       fmt2(mean(a.map((m) => m.me.kd_ratio))), fmt1(mean(a.map((m) => m.me.dpr)))]));
-    root.append(c2.fig);
+    s.grid.append(c2.fig);
+
+    const c3 = card("Rounds won by map", "average round differential per game — how one-sided the map is for you");
+    hBars(c3.body, groups.map(([name, a]) => ({
+      label: `${MAPLABEL(name)} (${a.length})`, mark: mapMark(name),
+      value: mean(a.map((m) => (m.score[0] || 0) - (m.score[1] || 0))),
+      tip: [{ value: signed(mean(a.map((m) => (m.score[0] || 0) - (m.score[1] || 0)))), label: "avg round diff" },
+            { value: fmt1(mean(a.map((m) => m.score[0] || 0))) + " – " + fmt1(mean(a.map((m) => m.score[1] || 0))), label: "avg score" }],
+    })), { fmt: (v) => signed(v), diverging: true });
+    c3.setTable(["Map", "Games", "Avg rounds for", "Avg rounds against", "Avg diff"], groups.map(([name, a]) => [
+      MAPLABEL(name), a.length, fmt1(mean(a.map((m) => m.score[0] || 0))), fmt1(mean(a.map((m) => m.score[1] || 0))),
+      signed(mean(a.map((m) => (m.score[0] || 0) - (m.score[1] || 0))))]));
+    s.grid.append(c3.fig);
+    root.append(s.sec);
   }
 
+  // ---------- queues ----------
   function renderQueues(root, ms) {
     if (state.queue !== "all") return;
-    const groups = [...groupBy(ms, (m) => m.data_source)].sort((a, b) => b[1].length - a[1].length);
-    const c = card("Queue comparison", "winrate and avg rating by queue");
-    const wrap = el("div");
-    const half = el("div");
-    vCols(half, groups.map(([q, a]) => ({
-      label: `${queueLabel(q)} (${a.length})`, value: winrate(a) * 100,
+    const all = [...groupBy(ms, (m) => m.data_source)].sort((a, b) => b[1].length - a[1].length);
+    const groups = all.filter(([, a]) => a.length >= 5);
+    const tiny = all.filter(([, a]) => a.length < 5);
+    if (groups.length < 2) return;
+    const s = section("Queues", "Where the games come from, and how the results differ between them." +
+      (tiny.length ? " Left out for sample size: " + tiny.map(([q, a]) => `${queueLabel(q)} (${a.length})`).join(", ") + "." : ""));
+    const c = card("Winrate by queue", "bar height is winrate; hover for rating and K/D");
+    vCols(c.body, groups.map(([q, a]) => ({
+      label: queueLabel(q), sub: `${a.length} games`, mark: queueMark(q), value: winrate(a) * 100,
       tipTitle: queueLabel(q),
       tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
             { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
             { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "avg K/D" }],
-    })), { fmt: (v) => Math.round(v) + "%", height: 180 });
-    wrap.append(half);
-    c.body.append(wrap);
+    })), { fmt: (v) => Math.round(v) + "%" });
     c.setTable(["Queue", "Games", "Winrate", "Avg rating", "Avg K/D", "Avg ADR"], groups.map(([q, a]) => [
       queueLabel(q), a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
       fmt2(mean(a.map((m) => m.me.kd_ratio))), fmt1(mean(a.map((m) => m.me.dpr)))]));
-    root.append(c.fig);
+    s.grid.append(c.fig);
+
+    const c2 = card("Your rating by queue", "average Leetify rating in each queue", { mark: LEETIFY_MARK });
+    vCols(c2.body, groups.map(([q, a]) => ({
+      label: queueLabel(q), sub: `${a.length} games`, mark: queueMark(q),
+      value: mean(a.map((m) => m.me.leetify_rating)) * 100, tipTitle: queueLabel(q),
+      tip: [{ value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
+            { value: fmt1(mean(a.map((m) => m.me.dpr))), label: "ADR" }],
+    })), { fmt: (v) => signed(v), diverging: true });
+    c2.setTable(["Queue", "Games", "Avg rating", "Avg ADR", "Avg headshot %"], groups.map(([q, a]) => [
+      queueLabel(q), a.length, fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+      fmt1(mean(a.map((m) => m.me.dpr))), fmt1(mean(a.map((m) => m.me.accuracy_head)) * 100) + "%"]));
+    s.grid.append(c2.fig);
+    root.append(s.sec);
   }
 
+  // ---------- mechanics ----------
+  function renderMechanics(root, ms) {
+    const w = Math.min(10, Math.max(3, Math.floor(ms.length / 4)));
+    const s = section("Your mechanics", `Rolling ${w}-game averages of the raw inputs Leetify measures for you.`);
+    const defs = [
+      { title: "Preaim", sub: "degrees off target when an enemy appears — lower is better", acc: (m) => m.me.preaim, fmt: fmt1 },
+      { title: "Reaction time", sub: "milliseconds to react — lower is better", acc: (m) => m.me.reaction_time * 1000, fmt: (v) => fmt1(v) },
+      { title: "Headshot accuracy", sub: "% of your kills that are headshots", acc: (m) => m.me.accuracy_head * 100, fmt: (v) => fmt1(v) + "%" },
+      { title: "Counter-strafing", sub: "% of shots fired while properly stopped", acc: (m) => m.me.counter_strafing_shots_good_ratio * 100, fmt: (v) => fmt1(v) + "%" },
+    ];
+    for (const d of defs) {
+      const c = card(d.title, d.sub);
+      const roll = rolling(ms, w, d.acc);
+      lineChart(c.body, ms.map((m, i) => ({ x: m.date, y: roll[i] })), { fmt: d.fmt, height: 220 });
+      c.setTable(["Date", "Value", `Rolling ${w}`], ms.map((m, i) => [m.date.toLocaleDateString("en-GB"), d.fmt(d.acc(m)), d.fmt(roll[i])]));
+      s.grid.append(c.fig);
+    }
+    root.append(s.sec);
+  }
+
+  // ---------- sessions ----------
   function renderSessions(root, ms) {
     const buckets = [[1, "1st"], [2, "2nd"], [3, "3rd"], [4, "4th"], [5, "5th+"]];
+    const s = section("Sessions", "Sessions split on breaks of 2 hours or more — does your form fade the longer you play?");
     const items = buckets.map(([n, label]) => {
       const a = ms.filter((m) => (n < 5 ? m.gameInSession === n : m.gameInSession >= 5));
       if (!a.length) return null;
       return {
-        label: `${label} (${a.length})`, value: mean(a.map((m) => m.me.leetify_rating)) * 100,
+        label, sub: `${a.length} games`, value: mean(a.map((m) => m.me.leetify_rating)) * 100,
         tipTitle: `${label} game of a session`,
         tip: [{ value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" },
               { value: fmt1(winrate(a) * 100) + "%", label: "winrate" }],
       };
     }).filter(Boolean);
-    const c = card("Game number within session", "sessions split on 2h+ breaks — does form fade in long sessions?");
-    vCols(c.body, items, { fmt: (v) => (v >= 0 ? "+" : "") + fmt1(v), diverging: true, height: 180 });
+    const c = card("Rating by game number in a session", "average Leetify rating", { mark: LEETIFY_MARK });
+    vCols(c.body, items, { fmt: (v) => signed(v), diverging: true });
     c.setTable(["Game in session", "Matches", "Avg rating", "Winrate"], buckets.map(([n, label]) => {
       const a = ms.filter((m) => (n < 5 ? m.gameInSession === n : m.gameInSession >= 5));
       return [label, a.length, a.length ? fmtRating(mean(a.map((m) => m.me.leetify_rating))) : "–", a.length ? fmt1(winrate(a) * 100) + "%" : "–"];
     }));
-    root.append(c.fig);
+    s.grid.append(c.fig);
+
+    const c2 = card("Winrate by game number in a session", "same buckets, results instead of rating");
+    vCols(c2.body, buckets.map(([n, label]) => {
+      const a = ms.filter((m) => (n < 5 ? m.gameInSession === n : m.gameInSession >= 5));
+      if (!a.length) return null;
+      return { label, sub: `${a.length} games`, value: winrate(a) * 100, tipTitle: `${label} game of a session`,
+        tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" }] };
+    }).filter(Boolean), { fmt: (v) => Math.round(v) + "%" });
+    c2.setTable(["Game in session", "Matches", "Winrate"], buckets.map(([n, label]) => {
+      const a = ms.filter((m) => (n < 5 ? m.gameInSession === n : m.gameInSession >= 5));
+      return [label, a.length, a.length ? fmt1(winrate(a) * 100) + "%" : "–"];
+    }));
+    s.grid.append(c2.fig);
+    root.append(s.sec);
   }
 
-  function renderOpponents(root, ms) {
-    const withLobby = ms.filter((m) => m.lobby && m.lobby.opponents && m.lobby.opponents.avg_preaim != null);
-    if (withLobby.length < 3) return;
-    // lobby strength: z-score composite of enemy preaim (lower = stronger),
-    // reaction time (lower = stronger), counter-strafing (higher = stronger)
-    const feats = [
-      { acc: (m) => -m.lobby.opponents.avg_preaim },
-      { acc: (m) => -m.lobby.opponents.avg_reaction_time },
-      { acc: (m) => m.lobby.opponents.avg_counter_strafing_ratio },
-    ];
-    for (const f of feats) {
-      const vals = withLobby.map(f.acc);
-      f.mu = mean(vals);
-      f.sd = Math.sqrt(mean(vals.map((v) => (v - f.mu) ** 2))) || 1;
-    }
-    const strength = (m) => mean(feats.map((f) => (f.acc(m) - f.mu) / f.sd));
-    withLobby.forEach((m) => { m._strength = strength(m); });
+  // ================= lobby quality =================
+  // Every factor is measured over the nine other players in the server, not
+  // just the enemy five: when you win, enemy stats sag and teammate stats
+  // rise, so averaging the whole server cancels most of that feedback.
+  const PILLARS = [
+    { key: "aim", label: "Aim & mechanics", cls: "s1" },
+    { key: "util", label: "Utility & discipline", cls: "s2" },
+    { key: "trade", label: "Structure & trading", cls: "pos" },
+  ];
+  const ratio = (L, a, b) => (L.sums[b] ? L.sums[a] / L.sums[b] : null);
+  const FACTORS = [
+    { pillar: "aim", key: "preaim", label: "Preaim", hint: "crosshair placement",
+      value: (L) => (L.avgs.preaim == null ? null : -L.avgs.preaim), sample: (L) => L.sums.rounds_count },
+    { pillar: "aim", key: "reaction", label: "Reaction time", hint: "time to fire on an enemy",
+      value: (L) => (L.avgs.reaction_time == null ? null : -L.avgs.reaction_time), sample: (L) => L.sums.rounds_count },
+    { pillar: "aim", key: "cstrafe", label: "Counter-strafing", hint: "shots fired while stopped",
+      value: (L) => ratio(L, "counter_strafing_shots_good", "counter_strafing_shots_all"), sample: (L) => L.sums.counter_strafing_shots_all },
+    { pillar: "aim", key: "accspot", label: "Accuracy vs spotted", hint: "hits per shot with an enemy visible",
+      value: (L) => ratio(L, "shots_hit_enemy_spotted", "shots_fired_enemy_spotted"), sample: (L) => L.sums.shots_fired_enemy_spotted },
+    { pillar: "aim", key: "hsshare", label: "Headshot share", hint: "share of kills that are headshots",
+      value: (L) => ratio(L, "total_hs_kills", "total_kills"), sample: (L) => L.sums.total_kills },
+    { pillar: "aim", key: "spray", label: "Spray accuracy", hint: "control on sustained fire",
+      value: (L) => L.avgs.spray_accuracy, sample: (L) => L.sums.rounds_count },
 
-    const c1 = card("Lobby strength vs your rating", "each dot is a match · strength from enemy preaim, reaction time, counter-strafing", { wide: true });
-    scatter(c1.body, withLobby.map((m) => ({
-      x: m._strength, y: m.me.leetify_rating * 100,
+    { pillar: "util", key: "utilrate", label: "Utility per round", hint: "nades actually thrown",
+      value: (L) => (L.sums.rounds_count ? (L.sums.flashbang_thrown + L.sums.he_thrown + L.sums.smoke_thrown + L.sums.molotov_thrown) / L.sums.rounds_count : null),
+      sample: (L) => L.sums.rounds_count },
+    { pillar: "util", key: "flashhit", label: "Flashes that blind a foe", hint: "share of flashes that land",
+      value: (L) => ratio(L, "flashbang_hit_foe", "flashbang_thrown"), sample: (L) => L.sums.flashbang_thrown },
+    { pillar: "util", key: "blind", label: "Blind duration", hint: "seconds of enemy blindness per flash",
+      value: (L) => L.avgs.flashbang_hit_foe_avg_duration, sample: (L) => L.sums.flashbang_hit_foe },
+    { pillar: "util", key: "flashkill", label: "Flash into a kill", hint: "flashes converted to a kill",
+      value: (L) => ratio(L, "flashbang_leading_to_kill", "flashbang_thrown"), sample: (L) => L.sums.flashbang_thrown },
+    { pillar: "util", key: "teamflash", label: "Not blinding teammates", hint: "inverse of team-flash rate",
+      value: (L) => { const r = ratio(L, "flashbang_hit_friend", "flashbang_thrown"); return r == null ? null : -r; },
+      sample: (L) => L.sums.flashbang_thrown },
+    { pillar: "util", key: "hedmg", label: "HE damage", hint: "damage per grenade",
+      value: (L) => L.avgs.he_foes_damage_avg, sample: (L) => L.sums.he_thrown },
+    { pillar: "util", key: "wasted", label: "Utility not wasted", hint: "inverse of util value held at death",
+      value: (L) => (L.avgs.utility_on_death_avg == null ? null : -L.avgs.utility_on_death_avg), sample: (L) => L.sums.rounds_count },
+
+    { pillar: "trade", key: "tradeopp", label: "Trade situations per round", hint: "how often deaths happen near a teammate",
+      value: (L) => ratio(L, "traded_death_opportunities", "rounds_count"), sample: (L) => L.sums.rounds_count },
+    { pillar: "trade", key: "tradeconv", label: "Trade conversion", hint: "trades taken when offered",
+      value: (L) => ratio(L, "trade_kills_succeed", "trade_kill_attempts"), sample: (L) => L.sums.trade_kill_attempts },
+    { pillar: "trade", key: "tradedconv", label: "Deaths that get traded", hint: "team punishing a lost duel",
+      value: (L) => ratio(L, "traded_deaths_succeed", "traded_death_attempts"), sample: (L) => L.sums.traded_death_attempts },
+  ];
+
+  function combineSides(a, b) {
+    const n = (a.n || 0) + (b.n || 0);
+    const avgs = {}, sums = {};
+    for (const k of new Set([...Object.keys(a.avgs || {}), ...Object.keys(b.avgs || {})])) {
+      const va = (a.avgs || {})[k], vb = (b.avgs || {})[k];
+      avgs[k] = va == null ? vb : vb == null ? va : (va * a.n + vb * b.n) / n;
+    }
+    for (const k of new Set([...Object.keys(a.sums || {}), ...Object.keys(b.sums || {})]))
+      sums[k] = ((a.sums || {})[k] || 0) + ((b.sums || {})[k] || 0);
+    return { n, avgs, sums };
+  }
+
+  function standardize(vals) {
+    const ok = vals.filter((v) => v != null && isFinite(v));
+    if (ok.length < 3) return vals.map(() => null);
+    const mu = mean(ok);
+    const sd = Math.sqrt(mean(ok.map((v) => (v - mu) ** 2))) || 1;
+    return vals.map((v) => (v == null || !isFinite(v) ? null : (v - mu) / sd));
+  }
+  // pull thin samples toward the average instead of letting them read as extremes
+  function shrink(zs, samples) {
+    const k = median(samples.filter((s) => s > 0)) || 1;
+    return zs.map((z, i) => (z == null ? null : z * ((samples[i] || 0) / ((samples[i] || 0) + k))));
+  }
+  // remove whatever a factor owes to the match simply running long or short
+  function residualize(vals, x) {
+    const p = vals.map((v, i) => [v, x[i]]).filter(([v, t]) => v != null && t != null);
+    if (p.length < 8) return vals;
+    const mv = mean(p.map((r) => r[0])), mx = mean(p.map((r) => r[1]));
+    const den = p.reduce((s, r) => s + (r[1] - mx) ** 2, 0);
+    if (!den) return vals;
+    const b = p.reduce((s, r) => s + (r[0] - mv) * (r[1] - mx), 0) / den;
+    return vals.map((v, i) => (v == null || x[i] == null ? null : v - (mv + b * (x[i] - mx))));
+  }
+
+  function lobbyModel(ms) {
+    const rows = ms.filter((m) => m.lobby && m.lobby.opponents && m.lobby.teammates &&
+      m.lobby.opponents.sums && m.lobby.teammates.sums && m.lobby.opponents.n);
+    if (rows.length < 15) return null;
+    const rounds = rows.map((m) => m.lobby.rounds || null);
+    const basis = {
+      lobby: rows.map((m) => combineSides(m.lobby.teammates, m.lobby.opponents)),
+      enemy: rows.map((m) => m.lobby.opponents),
+    };
+    const out = {};
+    for (const [name, sides] of Object.entries(basis)) {
+      const factors = {};
+      for (const f of FACTORS)
+        factors[f.key] = standardize(residualize(shrink(standardize(sides.map(f.value)), sides.map(f.sample)), rounds));
+      const pillars = {};
+      for (const p of PILLARS) {
+        const keys = FACTORS.filter((f) => f.pillar === p.key).map((f) => f.key);
+        pillars[p.key] = standardize(rows.map((_, i) => {
+          const v = keys.map((k) => factors[k][i]).filter((x) => x != null);
+          return v.length ? mean(v) : null;
+        }));
+      }
+      const composite = standardize(rows.map((_, i) => mean(PILLARS.map((p) => pillars[p.key][i] || 0))));
+      out[name] = { factors, pillars, composite };
+    }
+    rows.forEach((m, i) => { m._lobbyZ = out.lobby.composite[i]; });
+    return { rows, rounds, ...out.lobby, enemy: out.enemy };
+  }
+
+  function renderLobby(root, ms) {
+    const model = lobbyModel(ms);
+    const s = section("Lobby quality", "How strong the server was, measured independently of whether you won it.");
+    if (!model) {
+      s.before(el("p", { class: "csub" }, "Not enough matches with full lobby detail in this slice."));
+      root.append(s.sec);
+      return;
+    }
+    const { rows, composite } = model;
+    const wins = rows.map((m) => (m.outcome === "win" ? 1 : m.outcome === "tie" ? 0.5 : 0));
+
+    s.before(el("div", { class: "method" },
+      el("h4", {}, "How this is built"),
+      el("ol", {},
+        el("li", {}, el("b", {}, "All nine other players, not just the enemy five. "),
+          "An enemy-only reading mostly restates your own result — beat a team and their numbers sag. " +
+          "Averaging the whole server cancels most of that, because your teammates' numbers rise at the same time."),
+        el("li", {}, el("b", {}, "Sixteen signals across three areas. "),
+          "Aim, utility use and discipline, and trade structure — a coordinated lobby shows up in how it uses grenades and trades deaths, " +
+          "not only in how fast it clicks heads."),
+        el("li", {}, el("b", {}, "Corrected for match length. "),
+          "A 13–3 is over quickly and leaves thin data, so every signal is stripped of whatever it owes to rounds played, " +
+          "then pulled toward the average in proportion to how little of it was actually measured."),
+        el("li", {}, el("b", {}, "Rating is deliberately excluded. "),
+          "Leetify rating is scored relative to the lobby, so the nine others always average out to roughly your own rating negated. " +
+          "It carries no information about how strong the server was."))));
+
+    // --- 1. distribution vs your rating ---
+    const c1 = card("Lobby quality vs your rating", "each dot is one match · the dashed line is the fitted trend", { wide: true, mark: LEETIFY_MARK });
+    scatter(c1.body, rows.map((m, i) => ({
+      x: composite[i], y: m.me.leetify_rating * 100,
       cls: m.outcome === "win" ? "s1" : m.outcome === "loss" ? "s2" : "demph",
-      title: `${MAPLABEL(m.map_name)} · ${m.date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`,
+      title: `${MAPLABEL(m.map_name)} · ${queueLabel(m.data_source)} · ${m.date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`,
       tip: [
         { value: `${m.score[0]}–${m.score[1]}`, label: m.outcome },
         { value: fmtRating(m.me.leetify_rating), label: "your rating" },
-        { value: fmt2(m._strength), label: "lobby strength" },
-        { value: fmt1(m.lobby.opponents.avg_preaim) + "°", label: "enemy avg preaim" },
+        { value: signed(composite[i], fmt2), label: "lobby quality (z)" },
+        { value: signed(model.pillars.aim[i], fmt2), label: "aim" },
+        { value: signed(model.pillars.util[i], fmt2), label: "utility" },
+        { value: signed(model.pillars.trade[i], fmt2), label: "trading" },
       ],
-    })), { xLabel: "lobby strength (z-score, higher = stronger enemies)", yLabel: "your Leetify rating", xFmt: (v) => fmt1(v), yFmt: (v) => (v >= 0 ? "+" : "") + fmt1(v) });
+    })).filter((p) => p.x != null), {
+      xLabel: "lobby quality (z-score — right is a stronger server)", yLabel: "your Leetify rating",
+      xFmt: (v) => signed(v), yFmt: (v) => signed(v),
+    });
     c1.legend([{ cls: "s1", label: "Win" }, { cls: "s2", label: "Loss" }, { cls: "demph", label: "Tie" }]);
-    c1.setTable(["Date", "Map", "Result", "Score", "Your rating", "Lobby strength", "Enemy preaim", "Enemy reaction (ms)"],
-      withLobby.map((m) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), m.outcome, `${m.score[0]}–${m.score[1]}`,
-        fmtRating(m.me.leetify_rating), fmt2(m._strength), fmt1(m.lobby.opponents.avg_preaim) + "°",
-        fmt1(m.lobby.opponents.avg_reaction_time * 1000)]));
-    root.append(c1.fig);
+    c1.setTable(["Date", "Map", "Queue", "Result", "Your rating", "Lobby z", "Aim", "Utility", "Trading"],
+      rows.map((m, i) => [m.date.toLocaleDateString("en-GB"), MAPLABEL(m.map_name), queueLabel(m.data_source), m.outcome,
+        fmtRating(m.me.leetify_rating), signed(composite[i], fmt2), signed(model.pillars.aim[i], fmt2),
+        signed(model.pillars.util[i], fmt2), signed(model.pillars.trade[i], fmt2)]));
+    s.grid.append(c1.fig);
 
-    const strengthCard = (title, subtitle, tiers) => {
-      const c = card(title, subtitle);
-      vCols(c.body, tiers.map(([label, a]) => ({
-        label: `${label} (${a.length})`, value: winrate(a) * 100,
-        tipTitle: label,
-        tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
-              { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "avg rating" }],
-      })), { fmt: (v) => Math.round(v) + "%", height: 180 });
-      c.setTable(["Tier", "Matches", "Winrate", "Avg rating", "Avg K/D"], tiers.map(([label, a]) => [
-        label, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
-        fmt2(mean(a.map((m) => m.me.kd_ratio)))]));
-      root.append(c.fig);
+    // --- 2. winrate by band ---
+    const BANDS = [
+      ["Much weaker", (z) => z < -1], ["Weaker", (z) => z >= -1 && z < -0.33],
+      ["Even", (z) => z >= -0.33 && z <= 0.33],
+      ["Stronger", (z) => z > 0.33 && z <= 1], ["Much stronger", (z) => z > 1],
+    ];
+    const bands = BANDS.map(([label, test]) => [label, rows.filter((m, i) => composite[i] != null && test(composite[i]))])
+      .filter(([, a]) => a.length);
+    const c2 = card("Winrate by lobby quality", "fixed z-score bands, so the counts show the real mix of servers you land in");
+    vCols(c2.body, bands.map(([label, a]) => ({
+      label, sub: `${a.length} games`, value: winrate(a) * 100, tipTitle: label + " lobbies",
+      tip: [{ value: fmt1(winrate(a) * 100) + "%", label: "winrate" },
+            { value: fmtRating(mean(a.map((m) => m.me.leetify_rating))), label: "your avg rating" },
+            { value: fmt2(mean(a.map((m) => m.me.kd_ratio))), label: "your avg K/D" }],
+    })), { fmt: (v) => Math.round(v) + "%" });
+    c2.setTable(["Band", "Matches", "Winrate", "Your avg rating", "Your avg K/D"], bands.map(([label, a]) => [
+      label, a.length, fmt1(winrate(a) * 100) + "%", fmtRating(mean(a.map((m) => m.me.leetify_rating))),
+      fmt2(mean(a.map((m) => m.me.kd_ratio)))]));
+    s.grid.append(c2.fig);
+
+    // --- 3. the three pillars ---
+    const terc = (vals) => {
+      const idx = vals.map((v, i) => [v, i]).filter(([v]) => v != null).sort((a, b) => a[0] - b[0]).map(([, i]) => i);
+      const k = Math.floor(idx.length / 3);
+      return [idx.slice(0, k), idx.slice(-k)];
     };
+    const c3 = card("Which part of the lobby costs you games", "winrate in the weakest third of matches on each measure, versus the strongest third");
+    const pillarRows = PILLARS.map((p) => {
+      const [lo, hi] = terc(model.pillars[p.key]);
+      return { label: p.label, a: mean(lo.map((i) => wins[i])) * 100, b: mean(hi.map((i) => wins[i])) * 100 };
+    });
+    const [clo, chi] = terc(composite);
+    pillarRows.push({ label: "All three combined", a: mean(clo.map((i) => wins[i])) * 100, b: mean(chi.map((i) => wins[i])) * 100 });
+    pairedBars(c3.body, pillarRows, [{ cls: "pos", label: "vs weakest third" }, { cls: "neg", label: "vs strongest third" }],
+      { fmt: (v) => Math.round(v) + "%" });
+    c3.legend([{ cls: "pos", label: "Winrate vs weakest third" }, { cls: "neg", label: "Winrate vs strongest third" }]);
+    c3.setTable(["Measure", "Winrate vs weakest third", "Winrate vs strongest third", "Gap"],
+      pillarRows.map((r) => [r.label, fmt1(r.a) + "%", fmt1(r.b) + "%", signed(r.a - r.b) + " pts"]));
+    s.grid.append(c3.fig);
 
-    const sorted = [...withLobby].sort((a, b) => a._strength - b._strength);
-    const terc = Math.floor(sorted.length / 3);
-    strengthCard("Winrate vs your typical opposition",
-      "equal thirds of matches, weakest to strongest lobby — counts equal by design",
-      [
-        ["Weakest third", sorted.slice(0, terc)],
-        ["Middle third", sorted.slice(terc, 2 * terc)],
-        ["Strongest third", sorted.slice(2 * terc)],
-      ].filter(([, a]) => a.length));
+    // --- 4. per-signal audit ---
+    const c4 = card("Does each signal earn its place?", `winrate gap between the weakest and strongest third of lobbies on that signal, over ${rows.length} matches`);
+    const audit = FACTORS.map((f) => {
+      const [lo, hi] = terc(model.factors[f.key]);
+      if (!lo.length || !hi.length) return null;
+      const gap = (mean(lo.map((i) => wins[i])) - mean(hi.map((i) => wins[i]))) * 100;
+      return {
+        label: f.label, value: gap, faded: gap <= 0,
+        tipTitle: f.label,
+        tip: [{ value: signed(gap) + " pts", label: "winrate gap" },
+              { value: PILLARS.find((p) => p.key === f.pillar).label, label: "" },
+              { value: f.hint, label: "" }],
+      };
+    }).filter(Boolean).sort((a, b) => b.value - a.value);
+    hBars(c4.body, audit, { fmt: (v) => signed(v) + " pts", diverging: true, labelW: 210 });
+    c4.body.append(el("p", { class: "csub" },
+      "Positive means you win more when that signal is low. Faded bars point the wrong way — those signals describe the lobby " +
+      "but do not make it harder for you, which is exactly why the composite spreads its weight across all sixteen."));
+    c4.setTable(["Signal", "Area", "Winrate vs weakest third", "Winrate vs strongest third", "Gap"],
+      FACTORS.map((f) => {
+        const [lo, hi] = terc(model.factors[f.key]);
+        if (!lo.length || !hi.length) return [f.label, f.pillar, "–", "–", "–"];
+        return [f.label, PILLARS.find((p) => p.key === f.pillar).label,
+          fmt1(mean(lo.map((i) => wins[i])) * 100) + "%", fmt1(mean(hi.map((i) => wins[i])) * 100) + "%",
+          signed((mean(lo.map((i) => wins[i])) - mean(hi.map((i) => wins[i]))) * 100) + " pts"];
+      }));
+    s.grid.append(c4.fig);
 
-    strengthCard("Winrate by lobby strength band",
-      "fixed z-score bands — counts show the real mix of lobbies you face",
-      [
-        ["Weaker (z < −⅓)", withLobby.filter((m) => m._strength < -1 / 3)],
-        ["Even (±⅓)", withLobby.filter((m) => m._strength >= -1 / 3 && m._strength <= 1 / 3)],
-        ["Stronger (z > ⅓)", withLobby.filter((m) => m._strength > 1 / 3)],
-      ].filter(([, a]) => a.length));
+    // --- 5. why the whole server, not the enemy team ---
+    const c5 = card("Why measure the whole server", "how much each reading just restates your own result — lower is better");
+    const basisRows = [...PILLARS.map((p) => ({
+      label: p.label,
+      a: Math.abs(corr(model.enemy.pillars[p.key], wins) || 0),
+      b: Math.abs(corr(model.pillars[p.key], wins) || 0),
+    })), {
+      label: "Combined score",
+      a: Math.abs(corr(model.enemy.composite, wins) || 0),
+      b: Math.abs(corr(composite, wins) || 0),
+    }];
+    pairedBars(c5.body, basisRows, [{ cls: "neg", label: "enemy team only" }, { cls: "pos", label: "all nine others" }]);
+    c5.legend([{ cls: "neg", label: "Enemy team only" }, { cls: "pos", label: "All nine others" }]);
+    c5.body.append(el("p", { class: "csub" },
+      "Correlation with your own win/loss, absolute value. A difficulty measure that tracks your result this closely is not measuring difficulty."));
+    c5.setTable(["Measure", "Enemy team only |r|", "All nine others |r|"],
+      basisRows.map((r) => [r.label, fmt2(r.a), fmt2(r.b)]));
+    s.grid.append(c5.fig);
+
+    // --- 6. sanity check across queues ---
+    if (state.queue === "all") {
+      const qs = [...groupBy(rows.filter((m, i) => composite[i] != null), (m) => m.data_source)]
+        .filter(([, a]) => a.length >= 5)
+        .map(([q, a]) => [q, a, mean(a.map((m) => m._lobbyZ))])
+        .sort((a, b) => b[2] - a[2]);
+      if (qs.length >= 2) {
+        const c6 = card("Sanity check: lobby quality by queue", "the score is never told which queue a match came from — it should still rank them");
+        vCols(c6.body, qs.map(([q, a, z]) => ({
+          label: queueLabel(q), sub: `${a.length} games`, mark: queueMark(q), value: z, tipTitle: queueLabel(q),
+          tip: [{ value: signed(z, fmt2), label: "avg lobby quality (z)" },
+                { value: fmt1(winrate(a) * 100) + "%", label: "your winrate there" }],
+        })), { fmt: (v) => signed(v, fmt2), diverging: true });
+        c6.setTable(["Queue", "Matches", "Avg lobby quality", "Your winrate"], qs.map(([q, a, z]) => [
+          queueLabel(q), a.length, signed(z, fmt2), fmt1(winrate(a) * 100) + "%"]));
+        s.grid.append(c6.fig);
+      }
+    }
+    root.append(s.sec);
   }
 
   if (await loadPlayer(PLAYERS[0])) renderAll();
