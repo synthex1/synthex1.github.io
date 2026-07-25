@@ -86,5 +86,93 @@
   },
   "total_matches": 478,
   "winrate": 0.5172
+ },
+ {
+  "date": "2026-07-25",
+  "name": "AnthonyMike",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 9
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 10
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 7
+    },
+    {
+     "map_name": "de_train",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 9
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 9
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 0
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 6
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 0
+    }
+   ],
+   "faceit": 6,
+   "faceit_elo": 1226,
+   "leetify": -1.67,
+   "premier": null,
+   "renown": null,
+   "wingman": null
+  },
+  "rating": {
+   "aim": 70.1944,
+   "clutch": 0.0985,
+   "ct_leetify": -0.0121,
+   "opening": -0.0157,
+   "positioning": 51.1967,
+   "t_leetify": -0.0214,
+   "utility": 54.7925
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 37.6781,
+   "accuracy_head": 12.4218,
+   "counter_strafing_good_shots_ratio": 87.9213,
+   "ct_opening_aggression_success_rate": 21.341,
+   "ct_opening_duel_success_percentage": 43.3335,
+   "flashbang_hit_foe_avg_duration": 2.441,
+   "flashbang_hit_foe_per_flashbang": 0.5094,
+   "flashbang_hit_friend_per_flashbang": 0.4783,
+   "flashbang_leading_to_kill": 6.2449,
+   "flashbang_thrown": 7.3594,
+   "he_foes_damage_avg": 9.4138,
+   "he_friends_damage_avg": 0.5196,
+   "preaim": 12.0884,
+   "reaction_time_ms": 649.8271,
+   "spray_accuracy": 42.3742,
+   "t_opening_aggression_success_rate": 22.0051,
+   "t_opening_duel_success_percentage": 22.9074,
+   "trade_kill_opportunities_per_round": 0.4351,
+   "trade_kills_success_percentage": 43.0016,
+   "traded_deaths_success_percentage": 57.6009,
+   "utility_on_death_avg": 388.9534
+  },
+  "total_matches": 481,
+  "winrate": 0.4828
  }
 ]

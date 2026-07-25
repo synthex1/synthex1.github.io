@@ -130,5 +130,137 @@
   },
   "total_matches": 2057,
   "winrate": 0.5556
+ },
+ {
+  "date": "2026-07-25",
+  "name": "DerkNasty",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_edin",
+     "rank": 0
+    },
+    {
+     "map_name": "de_jura",
+     "rank": 0
+    },
+    {
+     "map_name": "de_nuke",
+     "rank": 12
+    },
+    {
+     "map_name": "cs_italy",
+     "rank": 9
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 16
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 12
+    },
+    {
+     "map_name": "de_grail",
+     "rank": 9
+    },
+    {
+     "map_name": "de_mills",
+     "rank": 0
+    },
+    {
+     "map_name": "de_thera",
+     "rank": 9
+    },
+    {
+     "map_name": "de_train",
+     "rank": 12
+    },
+    {
+     "map_name": "cs_agency",
+     "rank": 10
+    },
+    {
+     "map_name": "cs_alpine",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 6
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 0
+    },
+    {
+     "map_name": "de_golden",
+     "rank": 0
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 14
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 12
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 12
+    },
+    {
+     "map_name": "de_palacio",
+     "rank": 0
+    },
+    {
+     "map_name": "de_vertigo",
+     "rank": 5
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 13
+    }
+   ],
+   "faceit": 10,
+   "faceit_elo": 2227,
+   "leetify": 4.24,
+   "premier": 24274,
+   "renown": null,
+   "wingman": 13
+  },
+  "rating": {
+   "aim": 75.1748,
+   "clutch": 0.1424,
+   "ct_leetify": 0.0634,
+   "opening": 0.0277,
+   "positioning": 67.7242,
+   "t_leetify": 0.0235,
+   "utility": 72.7835
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 34.1374,
+   "accuracy_head": 21.0384,
+   "counter_strafing_good_shots_ratio": 81.9766,
+   "ct_opening_aggression_success_rate": 57.6089,
+   "ct_opening_duel_success_percentage": 64.6002,
+   "flashbang_hit_foe_avg_duration": 3.1522,
+   "flashbang_hit_foe_per_flashbang": 0.7513,
+   "flashbang_hit_friend_per_flashbang": 0.3535,
+   "flashbang_leading_to_kill": 9.0697,
+   "flashbang_thrown": 11.2206,
+   "he_foes_damage_avg": 7.1334,
+   "he_friends_damage_avg": 0.9207,
+   "preaim": 9.9466,
+   "reaction_time_ms": 626.2673,
+   "spray_accuracy": 38.2018,
+   "t_opening_aggression_success_rate": 40.0436,
+   "t_opening_duel_success_percentage": 42.3624,
+   "trade_kill_opportunities_per_round": 0.3479,
+   "trade_kills_success_percentage": 49.1764,
+   "traded_deaths_success_percentage": 46.9562,
+   "utility_on_death_avg": 250.7697
+  },
+  "total_matches": 2064,
+  "winrate": 0.5517
  }
 ]

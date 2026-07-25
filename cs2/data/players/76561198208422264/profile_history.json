@@ -82,5 +82,89 @@
   },
   "total_matches": 651,
   "winrate": 0.5
+ },
+ {
+  "date": "2026-07-25",
+  "name": "Schanzii",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 0
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 16
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 14
+    },
+    {
+     "map_name": "de_train",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 16
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 16
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 0
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_vertigo",
+     "rank": 0
+    }
+   ],
+   "faceit": 10,
+   "faceit_elo": 2068,
+   "leetify": -1.66,
+   "premier": null,
+   "renown": null,
+   "wingman": 16
+  },
+  "rating": {
+   "aim": 82.1214,
+   "clutch": 0.1312,
+   "ct_leetify": -0.0116,
+   "opening": -0.0211,
+   "positioning": 52.7903,
+   "t_leetify": -0.0217,
+   "utility": 72.703
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 34.2808,
+   "accuracy_head": 17.536,
+   "counter_strafing_good_shots_ratio": 93.9623,
+   "ct_opening_aggression_success_rate": 25.1897,
+   "ct_opening_duel_success_percentage": 39.4758,
+   "flashbang_hit_foe_avg_duration": 2.9943,
+   "flashbang_hit_foe_per_flashbang": 0.7461,
+   "flashbang_hit_friend_per_flashbang": 0.4088,
+   "flashbang_leading_to_kill": 8.6973,
+   "flashbang_thrown": 11.1763,
+   "he_foes_damage_avg": 13.3767,
+   "he_friends_damage_avg": 0.517,
+   "preaim": 11.1551,
+   "reaction_time_ms": 564.5046,
+   "spray_accuracy": 37.1919,
+   "t_opening_aggression_success_rate": 34.1687,
+   "t_opening_duel_success_percentage": 38.12,
+   "trade_kill_opportunities_per_round": 0.3373,
+   "trade_kills_success_percentage": 41.65,
+   "traded_deaths_success_percentage": 62.7234,
+   "utility_on_death_avg": 380.8237
+  },
+  "total_matches": 651,
+  "winrate": 0.5
  }
 ]
