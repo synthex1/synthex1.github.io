@@ -1494,5 +1494,93 @@
   },
   "total_matches": 495,
   "winrate": 0.4286
+ },
+ {
+  "date": "2026-08-10",
+  "name": "Fat Tony",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 9
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 10
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 10
+    },
+    {
+     "map_name": "de_train",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 9
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 9
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 0
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 6
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 0
+    }
+   ],
+   "faceit": 6,
+   "faceit_elo": 1226,
+   "leetify": -1.51,
+   "premier": null,
+   "renown": null,
+   "wingman": null
+  },
+  "rating": {
+   "aim": 65.5422,
+   "clutch": 0.0883,
+   "ct_leetify": -0.0134,
+   "opening": 0.007,
+   "positioning": 58.3166,
+   "t_leetify": -0.0166,
+   "utility": 54.3767
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 36.3031,
+   "accuracy_head": 11.5582,
+   "counter_strafing_good_shots_ratio": 86.3086,
+   "ct_opening_aggression_success_rate": 31.1181,
+   "ct_opening_duel_success_percentage": 45.2588,
+   "flashbang_hit_foe_avg_duration": 2.5838,
+   "flashbang_hit_foe_per_flashbang": 0.5974,
+   "flashbang_hit_friend_per_flashbang": 0.4837,
+   "flashbang_leading_to_kill": 4.1153,
+   "flashbang_thrown": 8.7241,
+   "he_foes_damage_avg": 7.3648,
+   "he_friends_damage_avg": 0.6384,
+   "preaim": 12.0135,
+   "reaction_time_ms": 633.5647,
+   "spray_accuracy": 40.2398,
+   "t_opening_aggression_success_rate": 33.5104,
+   "t_opening_duel_success_percentage": 33.5104,
+   "trade_kill_opportunities_per_round": 0.401,
+   "trade_kills_success_percentage": 43.8505,
+   "traded_deaths_success_percentage": 59.2234,
+   "utility_on_death_avg": 355.9037
+  },
+  "total_matches": 495,
+  "winrate": 0.4286
  }
 ]
