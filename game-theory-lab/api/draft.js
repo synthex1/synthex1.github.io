@@ -42,10 +42,16 @@ export default async function handler(req, res) {
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY from the environment
   try {
     const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 2000,
+      model: "claude-opus-5",
+      /* max_tokens caps thinking + text together on Opus 5; leave headroom */
+      max_tokens: 6000,
+      output_config: { effort: "low" },
       messages: [{ role: "user", content: DRAFT_PROMPT + scenario.trim() }],
     });
+    if (message.stop_reason === "refusal") {
+      res.status(502).json({ error: "upstream_error" });
+      return;
+    }
     const text = message.content
       .filter((block) => block.type === "text")
       .map((block) => block.text)
