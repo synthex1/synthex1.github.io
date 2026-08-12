@@ -222,6 +222,30 @@ function solveNash(m) {
   for (let r = 0; r < R; r++) for (let c = 0; c < Cn; c++)
     if (bestA[r][c] && bestB[r][c]) pure.push([r, c]);
 
+  /* Pareto efficiency: a cell is efficient if no other cell leaves one player
+     better off without leaving the other worse off */
+  const dominates = (r2, c2, r, c) => {
+    const a = num(m.cells[r][c].a), b = num(m.cells[r][c].b);
+    const a2 = num(m.cells[r2][c2].a), b2 = num(m.cells[r2][c2].b);
+    return a2 >= a && b2 >= b && (a2 > a || b2 > b);
+  };
+  const pareto = Array.from({ length: R }, () => Array(Cn).fill(true));
+  for (let r = 0; r < R; r++) for (let c = 0; c < Cn; c++)
+    for (let r2 = 0; r2 < R && pareto[r][c]; r2++) for (let c2 = 0; c2 < Cn; c2++)
+      if (dominates(r2, c2, r, c)) { pareto[r][c] = false; break; }
+  /* for an inefficient cell, the improvement to point at (prefer strictly better for both) */
+  const betterThan = (r, c) => {
+    const a = num(m.cells[r][c].a), b = num(m.cells[r][c].b);
+    let some = null;
+    for (let r2 = 0; r2 < R; r2++) for (let c2 = 0; c2 < Cn; c2++) {
+      if (!dominates(r2, c2, r, c)) continue;
+      const both = num(m.cells[r2][c2].a) > a && num(m.cells[r2][c2].b) > b;
+      if (both) return { r: r2, c: c2, both: true };
+      if (!some) some = { r: r2, c: c2, both: false };
+    }
+    return some;
+  };
+
   let mixed = null;
   if (R === 2 && Cn === 2) {
     const a = (r, c) => num(m.cells[r][c].a), b = (r, c) => num(m.cells[r][c].b);
@@ -233,7 +257,7 @@ function solveNash(m) {
       if (p > 0 && p < 1 && q > 0 && q < 1) mixed = { p, q };
     }
   }
-  return { bestA, bestB, pure, mixed };
+  return { bestA, bestB, pure, mixed, pareto, betterThan };
 }
 
 /* ================================================================== */
@@ -874,7 +898,7 @@ function NashMode({ matrix, setMatrix, defined, define }) {
     <div style={{ padding: "16px 12px 0" }}>
       <SectionTitle>Payoff matrix</SectionTitle>
       <p style={{ margin: "0 0 10px", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
-        Each cell is <span style={{ fontFamily: fontMono, color: C.decision }}>your payoff</span> / <span style={{ fontFamily: fontMono, color: C.chance }}>theirs</span>. Best responses are underlined; a cell where both are underlined is a Nash equilibrium.
+        Each cell is <span style={{ fontFamily: fontMono, color: C.decision }}>your payoff</span> / <span style={{ fontFamily: fontMono, color: C.chance }}>theirs</span>. Best responses are underlined; a cell where both are underlined is a Nash equilibrium. A corner dot marks Pareto-efficient cells — no other cell helps one player without hurting the other.
       </p>
 
       {isSampleMatrix(matrix) && (
@@ -884,7 +908,9 @@ function NashMode({ matrix, setMatrix, defined, define }) {
             payoffs are years in prison, so less negative is better. Whatever your partner does, confessing
             leaves <em>you</em> better off — so you both confess (the highlighted cell) and get −6 each, even
             though both staying silent (−1 each) would beat it for both of you. That gap between individual
-            logic and the best joint outcome is what makes this game famous.
+            logic and the best joint outcome is what makes this game famous — notice the corner dots:
+            every cell is Pareto-efficient except the equilibrium itself, the one outcome the two of you
+            could jointly improve on.
           </p>
           <p style={{ margin: "6px 0 0", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>
             Edit any number or name to make this game your own — this note disappears once you do.
@@ -922,7 +948,14 @@ function NashMode({ matrix, setMatrix, defined, define }) {
                       border: `1px solid ${C.line}`, padding: 6, textAlign: "center",
                       background: isNE ? "#E4F3EC" : C.card,
                       boxShadow: isNE ? `inset 0 0 0 2px ${C.best}` : "none",
+                      position: "relative",
                     }}>
+                      {sol.pareto[r][c] && (
+                        <span title="Pareto-efficient" style={{
+                          position: "absolute", top: 4, right: 4, width: 6, height: 6,
+                          borderRadius: "50%", background: C.ink, opacity: 0.45,
+                        }} />
+                      )}
                       <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center", fontFamily: fontMono }}>
                         <input type="number" inputMode="decimal" value={matrix.cells[r][c].a}
                           onChange={e => setCell(r, c, "a", e.target.value)}
@@ -945,12 +978,21 @@ function NashMode({ matrix, setMatrix, defined, define }) {
         <SectionTitle>Result</SectionTitle>
         {sol.pure.length > 0 ? (
           <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 13.5, lineHeight: 1.7 }}>
-            {sol.pure.map(([r, c], i) => (
-              <li key={i}>
-                Pure Nash equilibrium: <strong>{matrix.rows[r]}</strong> vs <strong>{matrix.cols[c]}</strong>
-                <span style={{ fontFamily: fontMono, color: C.inkSoft }}> ({fmt(num(matrix.cells[r][c].a))} / {fmt(num(matrix.cells[r][c].b))})</span>
-              </li>
-            ))}
+            {sol.pure.map(([r, c], i) => {
+              const eff = sol.pareto[r][c];
+              const dom = eff ? null : sol.betterThan(r, c);
+              return (
+                <li key={i}>
+                  Pure Nash equilibrium: <strong>{matrix.rows[r]}</strong> vs <strong>{matrix.cols[c]}</strong>
+                  <span style={{ fontFamily: fontMono, color: C.inkSoft }}> ({fmt(num(matrix.cells[r][c].a))} / {fmt(num(matrix.cells[r][c].b))})</span>
+                  {eff ? (
+                    <span style={{ color: C.best }}> — Pareto-efficient</span>
+                  ) : dom && (
+                    <span style={{ color: C.warn }}> — not Pareto-efficient: <strong>{matrix.rows[dom.r]}</strong> vs <strong>{matrix.cols[dom.c]}</strong> {dom.both ? "makes both players better off" : "makes one player better off without hurting the other"}</span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p style={{ margin: "6px 0 0", fontSize: 13.5 }}>No pure-strategy Nash equilibrium.</p>
