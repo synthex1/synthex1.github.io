@@ -278,6 +278,7 @@ export default function GameTheoryLab() {
   const [curId, setCurId] = useState(null);
   const [saveState, setSaveState] = useState("idle");
   const [armDelete, setArmDelete] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const loaded = useRef(false);
   const timer = useRef(null);
 
@@ -379,12 +380,20 @@ export default function GameTheoryLab() {
       `}</style>
 
       <header style={{ padding: "18px 16px 12px", borderBottom: `1px solid ${C.line}`, background: C.card }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>Game Theory Lab</h1>
-          <span style={{ fontFamily: fontMono, fontSize: 11, color: saveState === "local" ? C.warn : C.inkSoft }}>
-            {saveState === "saving" ? "saving…" : saveState === "saved" ? "saved" : saveState === "local" ? "not saved" : ""}
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontFamily: fontMono, fontSize: 11, color: saveState === "local" ? C.warn : C.inkSoft }}>
+              {saveState === "saving" ? "saving…" : saveState === "saved" ? "saved" : saveState === "local" ? "not saved" : ""}
+            </span>
+            <button onClick={() => setSettingsOpen(o => !o)} aria-label="Settings"
+              style={{ background: "none", border: `1px solid ${settingsOpen ? C.ink : C.line}`, borderRadius: 8, padding: "4px 8px", fontSize: 14, color: C.inkSoft, lineHeight: 1 }}>
+              ⚙
+            </button>
           </span>
         </div>
+
+        {settingsOpen && <SettingsPanel />}
 
         {/* scenario bar */}
         <div style={{ display: "flex", gap: 6, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -440,6 +449,43 @@ const barBtn = (color) => ({
    and the prompt). Access is gated by a passphrase, asked for once and kept
    in localStorage; a rejected passphrase clears it and asks again. */
 
+/* ---------- settings (drafting model) ---------- */
+
+const MODEL_KEY = "gt-lab-model";
+const MODEL_OPTIONS = [
+  { value: "opus", label: "Opus (low effort) — default", note: "Best judgment; a touch slower and pricier." },
+  { value: "sonnet", label: "Sonnet", note: "Fast, reliable middle ground." },
+  { value: "haiku", label: "Haiku", note: "Cheapest and fastest; drafts may need more editing." },
+];
+const getModelChoice = () => {
+  try {
+    const v = window.localStorage.getItem(MODEL_KEY);
+    return MODEL_OPTIONS.some(o => o.value === v) ? v : "opus";
+  } catch (e) { return "opus"; }
+};
+
+function SettingsPanel() {
+  const [model, setModel] = useState(getModelChoice());
+  const pick = (v) => {
+    setModel(v);
+    try { window.localStorage.setItem(MODEL_KEY, v); } catch (e) { /* session only */ }
+  };
+  const current = MODEL_OPTIONS.find(o => o.value === model);
+  return (
+    <div style={{ marginTop: 10, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 10, padding: 10 }}>
+      <SectionTitle>Settings</SectionTitle>
+      <label style={{ display: "block", marginTop: 6, fontSize: 12.5, color: C.inkSoft }}>
+        Drafting model
+        <select value={model} onChange={e => pick(e.target.value)}
+          style={{ display: "block", width: "100%", marginTop: 4, fontSize: 13, padding: "8px 6px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, fontWeight: 600, color: C.ink }}>
+          {MODEL_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </label>
+      {current && <p style={{ margin: "6px 0 0", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>{current.note}</p>}
+    </div>
+  );
+}
+
 const PASS_KEY = "gt-lab-passphrase";
 const getPass = () => { try { return window.localStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } };
 const setPassStore = (p) => { try { window.localStorage.setItem(PASS_KEY, p); } catch (e) { /* in-memory session only */ } };
@@ -464,7 +510,7 @@ function DraftAI({ onCreate }) {
         res = await fetch("/api/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scenario: text, passphrase }),
+          body: JSON.stringify({ scenario: text, passphrase, model: getModelChoice() }),
         });
       } catch (e) {
         setErr("Couldn't reach the drafting service — check your connection and try again.");
@@ -917,7 +963,11 @@ function NodeGlyph({ type, size }) {
 
 function TreeCanvas({ solved }) {
   const { nodes, edges, leaves } = useMemo(() => layoutTree(clone(solved)), [solved]);
-  const colW = 180, rowH = 60, padX = 24, padY = 30;
+  /* columns widen to fit the longest edge label (10px mono ≈ 6.2px/char),
+     capped so a single verbose label can't blow up the whole canvas */
+  const maxLabel = edges.reduce((m, e) => Math.max(m, (e.to.label || "").length), 0);
+  const labelChars = Math.min(Math.max(maxLabel, 18), 34);
+  const colW = Math.max(180, Math.round(labelChars * 6.2 + 44)), rowH = 60, padX = 24, padY = 30;
   const maxDepth = Math.max(...nodes.map(n => n.depth));
   const W = padX * 2 + colW * maxDepth + 140;
   const H = padY * 2 + rowH * Math.max(leaves - 1, 1) + 20;
@@ -948,7 +998,7 @@ function TreeCanvas({ solved }) {
                 fontSize="10" fontFamily={fontMono}
                 stroke={C.paper} strokeWidth="3" paintOrder="stroke"
                 fill={e.best ? C.best : C.inkSoft}>
-                {truncate(e.to.label, isChance ? 18 : 20)}
+                {truncate(e.to.label, labelChars)}
               </text>
               {isChance && (
                 <text x={mx} y={(y1 + y2) / 2 - 6} textAnchor="middle"
