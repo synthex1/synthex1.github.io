@@ -651,18 +651,29 @@ function Sensitivity({ tree, solved }) {
 
       {data && <SensitivityChart data={data} />}
 
-      {data?.switches.length > 0 && (
-        <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: 10 }}>
-          {data.switches.map((s, i) => (
-            <p key={i} style={{ margin: i ? "6px 0 0" : 0, fontSize: 13, lineHeight: 1.5 }}>
-              Best choice switches from <strong>{data.series[s.from].label}</strong> to <strong>{data.series[s.to].label}</strong> at p ≈ <span style={{ fontFamily: fontMono, fontWeight: 600 }}>{fmt(s.p)}</span>
+      {data?.switches.length > 0 && (() => {
+        /* anchor the story at the current p, not at the left edge of the axis */
+        const N = data.ps.length;
+        const idxNow = Math.min(Math.max(Math.round(data.currentP * (N - 1)), 0), N - 1);
+        const leader = data.series.reduce((b, s, j) => (s.vals[idxNow] > data.series[b].vals[idxNow] ? j : b), 0);
+        return (
+          <div style={{ marginTop: 10, background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: 10 }}>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+              At the current p = <span style={{ fontFamily: fontMono, fontWeight: 600 }}>{fmt(data.currentP)}</span>, <strong>{data.series[leader].label}</strong> is the best choice.
             </p>
-          ))}
-          <p style={{ margin: "8px 0 0", fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>
-            Here p is the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>.
-          </p>
-        </div>
-      )}
+            {data.switches.map((s, i) => (
+              <p key={i} style={{ margin: "6px 0 0", fontSize: 13, lineHeight: 1.5 }}>
+                {s.p < data.currentP
+                  ? <>If p falls below ≈ <span style={{ fontFamily: fontMono, fontWeight: 600 }}>{fmt(s.p)}</span>, the best choice becomes <strong>{data.series[s.from].label}</strong>.</>
+                  : <>If p rises above ≈ <span style={{ fontFamily: fontMono, fontWeight: 600 }}>{fmt(s.p)}</span>, the best choice becomes <strong>{data.series[s.to].label}</strong>.</>}
+              </p>
+            ))}
+            <p style={{ margin: "8px 0 0", fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>
+              Here p is the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>.
+            </p>
+          </div>
+        );
+      })()}
       {data && data.series.length > 1 && data.switches.length === 0 && (
         <p style={{ marginTop: 10, fontSize: 12.5, color: C.inkSoft }}>
           The best choice doesn't change anywhere in this range — the decision is robust to the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>.
