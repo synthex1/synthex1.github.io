@@ -10,6 +10,7 @@ const DRAFT_PROMPT =
   "Rules: root is usually a decision node; children of a chance node each need prob, and probs must sum to 1; " +
   "terminal nodes need payoff (net value, negative for costs/losses) and empty children; keep labels under 5 words; " +
   "keep the tree compact — about 12 nodes at most; " +
+  "never create a node with exactly one child — a decision's children are the chance nodes or outcomes themselves; " +
   "estimate sensible probabilities and payoffs when the user does not give them. " +
   'Include "matrix" only if the scenario is a strategic game between two players: ' +
   '{"rows":["strategy",...],"cols":[...],"cells":[[{"a":rowPayoff,"b":colPayoff},...],...]} (2-4 strategies each, cells[row][col]). ' +
