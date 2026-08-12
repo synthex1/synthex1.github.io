@@ -13,7 +13,7 @@ via Add to Home Screen (full-screen, standalone).
 - `api/draft.js` — Vercel serverless function. Reads `ANTHROPIC_API_KEY`
   and `DRAFT_PASSPHRASE` from environment variables, checks the
   passphrase (timing-safe), and proxies drafting requests to the
-  Anthropic Messages API (`claude-sonnet-4-6`, `max_tokens` 2000). The
+  Anthropic Messages API (`claude-opus-5` at low effort, `max_tokens` 6000). The
   drafting prompt (with a ~12-node tree cap) lives here, server-side.
 - `src/` — app source (`app.jsx`, `entry.jsx`) and build scripts.
 - `vercel.json` — raises the function timeout to 60 s.
