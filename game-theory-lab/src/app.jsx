@@ -485,6 +485,11 @@ function TreeMode({ tree, setTree }) {
   const setType = (id, type) => setTree(t => mapNode(t, id, n => ({
     ...n, type, children: type === "terminal" ? [] : n.children,
   })));
+  /* keep this child's p as typed, redistribute the remainder across siblings */
+  const rescale = (parentId, childId) => setTree(t => {
+    const p = Math.min(Math.max(num(findNode(t, childId)?.prob), 0), 1);
+    return withProb(t, parentId, childId, p);
+  });
 
   return (
     <div>
@@ -495,7 +500,7 @@ function TreeMode({ tree, setTree }) {
           Squares are your decisions, circles are chance. EVs roll back from the outcomes; the green path is the optimal strategy.
         </p>
         <NodeCard node={tree} solvedRoot={solved} parent={null} depth={0}
-          update={update} addChild={addChild} remove={remove} setType={setType} />
+          update={update} addChild={addChild} remove={remove} setType={setType} rescale={rescale} />
       </section>
       <Sensitivity tree={tree} solved={solved} />
     </div>
@@ -645,11 +650,13 @@ function SensitivityChart({ data }) {
 
 /* ---------- node editor ---------- */
 
-function NodeCard({ node, solvedRoot, parent, depth, update, addChild, remove, setType }) {
+function NodeCard({ node, solvedRoot, parent, depth, update, addChild, remove, setType, rescale }) {
   const s = findNode(solvedRoot, node.id) || {};
   const isChanceChild = parent?.type === "chance";
   const color = node.type === "decision" ? C.decision : node.type === "chance" ? C.chance : C.ink;
   const badPsum = node.type === "chance" && node.children.length > 0 && Math.abs((s.psum ?? 1) - 1) > 0.001;
+  const parentSumOff = isChanceChild && parent.children.length > 1 &&
+    Math.abs((findNode(solvedRoot, parent.id)?.psum ?? 1) - 1) > 0.001;
 
   return (
     <div style={{ marginLeft: depth === 0 ? 0 : 14, borderLeft: depth === 0 ? "none" : `2px solid ${C.line}`, paddingLeft: depth === 0 ? 0 : 10, marginBottom: 8 }}>
@@ -679,6 +686,12 @@ function NodeCard({ node, solvedRoot, parent, depth, update, addChild, remove, s
                 style={numStyle(64)} />
             </label>
           )}
+          {parentSumOff && (
+            <button onClick={() => rescale(parent.id, node.id)} style={miniBtn(C.chance)}
+              title="Keep this probability and rescale the other branches so they sum to 1">
+              ⚖ rescale others
+            </button>
+          )}
 
           {node.type === "terminal" && (
             <label style={{ fontSize: 12, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>
@@ -703,7 +716,7 @@ function NodeCard({ node, solvedRoot, parent, depth, update, addChild, remove, s
 
       {node.children.map(k => (
         <NodeCard key={k.id} node={k} solvedRoot={solvedRoot} parent={node} depth={depth + 1}
-          update={update} addChild={addChild} remove={remove} setType={setType} />
+          update={update} addChild={addChild} remove={remove} setType={setType} rescale={rescale} />
       ))}
     </div>
   );
