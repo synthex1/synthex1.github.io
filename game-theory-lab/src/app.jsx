@@ -29,25 +29,24 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 /* ---------------- sample data ---------------- */
 
 const sampleTree = {
-  id: "n1", type: "decision", label: "Quote the account?",
+  id: "n1", type: "decision", label: "Where to hold the party?",
   children: [
     {
-      id: "n2", type: "chance", label: "Quote aggressive", prob: null,
+      id: "n2", type: "chance", label: "Outdoor park (free)", prob: null,
       children: [
-        { id: "n3", type: "terminal", label: "Bind, runs clean", prob: 0.55, payoff: 180, children: [] },
-        { id: "n4", type: "terminal", label: "Bind, large loss", prob: 0.15, payoff: -400, children: [] },
-        { id: "n5", type: "terminal", label: "Lose to market", prob: 0.30, payoff: -10, children: [] },
+        { id: "n3", type: "terminal", label: "Sunny, great day", prob: 0.60, payoff: 100, children: [] },
+        { id: "n4", type: "terminal", label: "Drizzle, some bail", prob: 0.30, payoff: -20, children: [] },
+        { id: "n5", type: "terminal", label: "Storm, washout", prob: 0.10, payoff: -80, children: [] },
       ],
     },
     {
-      id: "n6", type: "chance", label: "Quote standard", prob: null,
+      id: "n6", type: "chance", label: "Rent indoor venue", prob: null,
       children: [
-        { id: "n7", type: "terminal", label: "Bind, runs clean", prob: 0.35, payoff: 260, children: [] },
-        { id: "n8", type: "terminal", label: "Bind, large loss", prob: 0.10, payoff: -320, children: [] },
-        { id: "n9", type: "terminal", label: "Lose to market", prob: 0.55, payoff: -10, children: [] },
+        { id: "n7", type: "terminal", label: "Great turnout", prob: 0.70, payoff: 40, children: [] },
+        { id: "n8", type: "terminal", label: "Low turnout", prob: 0.30, payoff: -30, children: [] },
       ],
     },
-    { id: "n10", type: "terminal", label: "Decline", prob: null, payoff: 0, children: [] },
+    { id: "n10", type: "terminal", label: "Postpone it", prob: null, payoff: 0, children: [] },
   ],
 };
 
@@ -66,8 +65,18 @@ const sampleTreePurchase = {
   ],
 };
 
+/* the classic prisoner's dilemma; payoffs are years in prison (negative) */
 const sampleMatrix = {
-  rowName: "You", colName: "Competitor",
+  rowName: "You", colName: "Partner",
+  rows: ["Stay silent", "Confess"],
+  cols: ["Stay silent", "Confess"],
+  cells: [
+    [{ a: -1, b: -1 }, { a: -10, b: 0 }],
+    [{ a: 0, b: -10 }, { a: -6, b: -6 }],
+  ],
+};
+/* the pre-PD placeholder matrix, kept so old saves still read as "no game yet" */
+const legacyRateMatrix = {
   rows: ["Hold rate", "Cut rate"],
   cols: ["Hold rate", "Cut rate"],
   cells: [
@@ -94,7 +103,8 @@ const matrixKey = (m) => {
   } catch (e) { return "bad"; }
 };
 const isSampleMatrix = (m) => matrixKey(m) === matrixKey(sampleMatrix);
-const withGameFlag = (s) => (s.gameDefined == null ? { ...s, gameDefined: !isSampleMatrix(s.matrix) } : s);
+const isPlaceholderMatrix = (m) => isSampleMatrix(m) || matrixKey(m) === matrixKey(legacyRateMatrix);
+const withGameFlag = (s) => (s.gameDefined == null ? { ...s, gameDefined: !isPlaceholderMatrix(s.matrix) } : s);
 
 /* ---- normalize AI-drafted JSON into safe app data ---- */
 function normalizeTree(n) {
@@ -230,7 +240,7 @@ function solveNash(m) {
 
 export default function GameTheoryLab() {
   const [mode, setMode] = useState("tree");
-  const [scenarios, setScenarios] = useState([newScenario("Underwriting example"), purchaseScenario()]);
+  const [scenarios, setScenarios] = useState([newScenario("Party planning example"), purchaseScenario()]);
   const [curId, setCurId] = useState(null);
   const [saveState, setSaveState] = useState("idle");
   const [armDelete, setArmDelete] = useState(false);
@@ -248,7 +258,8 @@ export default function GameTheoryLab() {
           const d = JSON.parse(res.value);
           if (d.uid) _uid = d.uid;
           if (d.scenarios?.length) {
-            const list = (d.purchaseAdded ? d.scenarios : [...d.scenarios, purchaseScenario()]).map(withGameFlag);
+            let list = (d.purchaseAdded ? d.scenarios : [...d.scenarios, purchaseScenario()]).map(withGameFlag);
+            if (!d.partyAdded) list = [...list, newScenario("Party planning example")];
             setScenarios(list); setCurId(d.curId || list[0].id); loaded.current = true; return;
           }
         }
@@ -273,7 +284,7 @@ export default function GameTheoryLab() {
     clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       try {
-        await window.storage.set("gt-lab-v2", JSON.stringify({ scenarios, curId: cur?.id, uid: _uid, purchaseAdded: true }));
+        await window.storage.set("gt-lab-v2", JSON.stringify({ scenarios, curId: cur?.id, uid: _uid, purchaseAdded: true, partyAdded: true }));
         setSaveState("saved");
       } catch (e) { setSaveState("local"); }
     }, 800);
@@ -827,7 +838,7 @@ function NashMode({ matrix, setMatrix, defined, define }) {
             Start a blank game
           </button>
           <button onClick={() => define("example")} style={{ ...barBtn(C.ink), flex: 1, minWidth: 130 }}>
-            Load the rate-war example
+            Load the prisoner's dilemma
           </button>
         </div>
         <p style={{ margin: "10px 0 0", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>
@@ -865,6 +876,21 @@ function NashMode({ matrix, setMatrix, defined, define }) {
       <p style={{ margin: "0 0 10px", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
         Each cell is <span style={{ fontFamily: fontMono, color: C.decision }}>your payoff</span> / <span style={{ fontFamily: fontMono, color: C.chance }}>theirs</span>. Best responses are underlined; a cell where both are underlined is a Nash equilibrium.
       </p>
+
+      {isSampleMatrix(matrix) && (
+        <div style={{ background: C.card, border: `1px dashed ${C.line}`, borderRadius: 10, padding: 10, marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55 }}>
+            <strong>The prisoner's dilemma.</strong> You and a partner are arrested and questioned separately;
+            payoffs are years in prison, so less negative is better. Whatever your partner does, confessing
+            leaves <em>you</em> better off — so you both confess (the highlighted cell) and get −6 each, even
+            though both staying silent (−1 each) would beat it for both of you. That gap between individual
+            logic and the best joint outcome is what makes this game famous.
+          </p>
+          <p style={{ margin: "6px 0 0", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>
+            Edit any number or name to make this game your own — this note disappears once you do.
+          </p>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <Stepper label={`${R} rows`} onDown={() => resize("rows", -1)} onUp={() => resize("rows", 1)} />
