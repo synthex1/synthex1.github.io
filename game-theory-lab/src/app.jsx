@@ -572,8 +572,29 @@ function Sensitivity({ tree, solved }) {
     options.push({ value: `${n.id}|${k.id}`, label: `${n.label} — vary “${k.label}”` })
   ));
 
+  /* default to stress-testing the recommendation: the first chance node on the
+     optimal (green) path, sweeping its highest-probability branch */
+  const preferred = useMemo(() => {
+    let n = solved;
+    while (n) {
+      if (n.type === "chance" && n.children.length >= 2) {
+        let top = n.children[0];
+        n.children.forEach(k => { if (num(k.prob) > num(top.prob)) top = k; });
+        return `${n.id}|${top.id}`;
+      }
+      if (!n.children?.length) return null;
+      n = n.type === "decision" ? n.children[n.bestIdx ?? 0] : n.children[0];
+    }
+    return null;
+  }, [solved]);
+
+  /* follow the recommended default until the user picks something themselves */
+  const userPicked = useRef(false);
   useEffect(() => {
-    if (!options.some(o => o.value === sel)) setSel(options[0]?.value || "");
+    if (!options.some(o => o.value === sel) || !userPicked.current) {
+      const def = preferred && options.some(o => o.value === preferred) ? preferred : options[0]?.value || "";
+      if (def !== sel) setSel(def);
+    }
   }, [tree]); // eslint-disable-line
 
   const data = useMemo(() => {
@@ -623,7 +644,7 @@ function Sensitivity({ tree, solved }) {
       <p style={{ margin: "2px 0 8px", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
         Sweep one probability from 0 to 1 (siblings rescale proportionally) and see how each option's EV responds.
       </p>
-      <select value={sel} onChange={e => setSel(e.target.value)}
+      <select value={sel} onChange={e => { userPicked.current = true; setSel(e.target.value); }}
         style={{ width: "100%", fontSize: 13, padding: "8px 6px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.card, fontWeight: 600 }}>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -637,11 +658,14 @@ function Sensitivity({ tree, solved }) {
               Best choice switches from <strong>{data.series[s.from].label}</strong> to <strong>{data.series[s.to].label}</strong> at p ≈ <span style={{ fontFamily: fontMono, fontWeight: 600 }}>{fmt(s.p)}</span>
             </p>
           ))}
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>
+            Here p is the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>; its sibling branches rescale proportionally as p moves.
+          </p>
         </div>
       )}
       {data && data.series.length > 1 && data.switches.length === 0 && (
         <p style={{ marginTop: 10, fontSize: 12.5, color: C.inkSoft }}>
-          The best choice doesn't change anywhere in this range — the decision is robust to this probability.
+          The best choice doesn't change anywhere in this range — the decision is robust to the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>.
         </p>
       )}
       {data && <SensWorkings tree={tree} sel={sel} data={data} />}
