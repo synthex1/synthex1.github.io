@@ -76,8 +76,25 @@ const sampleMatrix = {
   ],
 };
 
-const newScenario = (name) => ({ id: uid(), name, tree: clone(sampleTree), matrix: clone(sampleMatrix) });
-const purchaseScenario = () => ({ id: uid(), name: "Warranty example", tree: clone(sampleTreePurchase), matrix: clone(sampleMatrix) });
+const newScenario = (name) => ({ id: uid(), name, tree: clone(sampleTree), matrix: clone(sampleMatrix), gameDefined: false });
+const purchaseScenario = () => ({ id: uid(), name: "Warranty example", tree: clone(sampleTreePurchase), matrix: clone(sampleMatrix), gameDefined: false });
+const blankMatrix = () => ({
+  rowName: "You", colName: "Them",
+  rows: ["Strategy 1", "Strategy 2"],
+  cols: ["Strategy 1", "Strategy 2"],
+  cells: [
+    [{ a: 0, b: 0 }, { a: 0, b: 0 }],
+    [{ a: 0, b: 0 }, { a: 0, b: 0 }],
+  ],
+});
+/* legacy saves have no gameDefined flag: an untouched sample matrix means no game yet */
+const matrixKey = (m) => {
+  try {
+    return JSON.stringify([m.rows, m.cols, m.cells.map(row => row.map(c => [num(c.a), num(c.b)]))]);
+  } catch (e) { return "bad"; }
+};
+const isSampleMatrix = (m) => matrixKey(m) === matrixKey(sampleMatrix);
+const withGameFlag = (s) => (s.gameDefined == null ? { ...s, gameDefined: !isSampleMatrix(s.matrix) } : s);
 
 /* ---- normalize AI-drafted JSON into safe app data ---- */
 function normalizeTree(n) {
@@ -231,7 +248,7 @@ export default function GameTheoryLab() {
           const d = JSON.parse(res.value);
           if (d.uid) _uid = d.uid;
           if (d.scenarios?.length) {
-            const list = d.purchaseAdded ? d.scenarios : [...d.scenarios, purchaseScenario()];
+            const list = (d.purchaseAdded ? d.scenarios : [...d.scenarios, purchaseScenario()]).map(withGameFlag);
             setScenarios(list); setCurId(d.curId || list[0].id); loaded.current = true; return;
           }
         }
@@ -241,7 +258,7 @@ export default function GameTheoryLab() {
         if (v1?.value) {
           const d = JSON.parse(v1.value);
           if (d.uid) _uid = Math.max(_uid, d.uid);
-          const s = { id: uid(), name: "Scenario 1", tree: d.tree || clone(sampleTree), matrix: d.matrix || clone(sampleMatrix) };
+          const s = withGameFlag({ id: uid(), name: "Scenario 1", tree: d.tree || clone(sampleTree), matrix: d.matrix || clone(sampleMatrix) });
           setScenarios([s]); setCurId(s.id);
         }
       } catch (e) { /* no saved data — fine */ }
@@ -286,7 +303,7 @@ export default function GameTheoryLab() {
       return next;
     });
   };
-  const resetCur = () => patchCur(mode === "tree" ? { tree: clone(sampleTree) } : { matrix: clone(sampleMatrix) });
+  const resetCur = () => patchCur(mode === "tree" ? { tree: clone(sampleTree) } : { matrix: clone(sampleMatrix), gameDefined: true });
 
   const addDraft = (d) => {
     const s = {
@@ -294,6 +311,7 @@ export default function GameTheoryLab() {
       name: String(d?.name || "Drafted scenario").slice(0, 40),
       tree: d?.tree ? normalizeTree(d.tree) : clone(sampleTree),
       matrix: normalizeMatrix(d?.matrix),
+      gameDefined: !!d?.matrix,
     };
     setScenarios(list => [...list, s]);
     setCurId(s.id);
@@ -355,7 +373,8 @@ export default function GameTheoryLab() {
 
       {mode === "tree"
         ? <TreeMode tree={cur.tree} setTree={setTree} />
-        : <NashMode matrix={cur.matrix} setMatrix={setMatrix} />}
+        : <NashMode matrix={cur.matrix} setMatrix={setMatrix} defined={!!cur.gameDefined}
+            define={(kind) => patchCur({ gameDefined: true, matrix: kind === "blank" ? blankMatrix() : clone(sampleMatrix) })} />}
 
       <div style={{ padding: "24px 16px 0", textAlign: "center" }}>
         <button onClick={resetCur} style={{ background: "none", border: "none", color: C.inkSoft, fontSize: 12, textDecoration: "underline" }}>
@@ -788,8 +807,35 @@ const truncate = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + "…" : s ||
 
 /* ================= NASH MODE ================= */
 
-function NashMode({ matrix, setMatrix }) {
+function NashMode({ matrix, setMatrix, defined, define }) {
   const sol = useMemo(() => solveNash(matrix), [matrix]);
+
+  if (!defined) return (
+    <div style={{ padding: "16px 12px 0" }}>
+      <SectionTitle>Payoff matrix</SectionTitle>
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: 14, marginTop: 6 }}>
+        <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6 }}>
+          No game defined for this scenario yet.
+        </p>
+        <p style={{ margin: "8px 0 0", fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+          This tab is for strategic games: two players each pick a strategy, and every cell holds both payoffs.
+          A one-player decision like this scenario's tree doesn't need one.
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+          <button onClick={() => define("blank")}
+            style={{ flex: 1, minWidth: 130, padding: "9px 0", borderRadius: 8, fontSize: 13.5, fontWeight: 700, border: "none", background: C.decision, color: C.paper }}>
+            Start a blank game
+          </button>
+          <button onClick={() => define("example")} style={{ ...barBtn(C.ink), flex: 1, minWidth: 130 }}>
+            Load the rate-war example
+          </button>
+        </div>
+        <p style={{ margin: "10px 0 0", fontSize: 11.5, color: C.inkSoft, lineHeight: 1.4 }}>
+          Or describe a two-player situation in "Draft with AI" — drafts that involve two players arrive with a matrix filled in.
+        </p>
+      </div>
+    </div>
+  );
   const R = matrix.rows.length, Cn = matrix.cols.length;
 
   const setCell = (r, c, k, v) => setMatrix(m => {
