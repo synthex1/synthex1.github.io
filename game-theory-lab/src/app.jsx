@@ -644,7 +644,86 @@ function Sensitivity({ tree, solved }) {
           The best choice doesn't change anywhere in this range — the decision is robust to this probability.
         </p>
       )}
+      {data && <SensWorkings tree={tree} sel={sel} data={data} />}
     </section>
+  );
+}
+
+/* ---------- collapsible workings ---------- */
+
+const wHead = { margin: "12px 0 2px", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.inkSoft };
+const wLine = { margin: "4px 0 0", fontSize: 12.5, lineHeight: 1.55 };
+const wMono = { fontFamily: fontMono, fontSize: 11.5 };
+
+function Workings({ children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 14 }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ width: "100%", padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 600, border: `1px dashed ${C.line}`, background: "transparent", color: C.inkSoft }}>
+        {open ? "Hide the workings" : "Show the workings"}
+      </button>
+      {open && <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 10, padding: 12, marginTop: 8 }}>{children}</div>}
+    </div>
+  );
+}
+
+function SensWorkings({ tree, sel, data }) {
+  const [nodeId, childId] = sel.split("|");
+  const parent = findNode(tree, nodeId);
+  if (!parent) return null;
+  const siblings = parent.children.filter(k => k.id !== childId);
+  const sumO = siblings.reduce((s, k) => s + num(k.prob), 0);
+  const N = data.ps.length;
+  const single = data.series.length === 1;
+  return (
+    <Workings>
+      <p style={{ ...wHead, marginTop: 0 }}>1 · What's swept</p>
+      <p style={wLine}>
+        p = P(<strong>{data.childLabel}</strong>) under <strong>{data.parentLabel}</strong> runs from 0 to 1
+        across {N} grid points. Every other number in the tree stays fixed. The dashed "now" line marks the
+        current value, p = <span style={wMono}>{fmt(data.currentP)}</span>.
+      </p>
+      <p style={wHead}>2 · Rescaling the siblings</p>
+      <p style={wLine}>
+        The other branches of that chance node share what's left (1 − p), keeping their current ratio:
+      </p>
+      {siblings.map(k => (
+        <p key={k.id} style={{ ...wLine, ...wMono }}>
+          {truncate(k.label, 24)}: (1 − p) × {sumO > 0 ? pct(num(k.prob) / sumO) : pct(1 / Math.max(siblings.length, 1))}
+        </p>
+      ))}
+      <p style={wHead}>3 · Re-rolling the tree</p>
+      <p style={wLine}>
+        At each grid point the whole tree is re-evaluated by rollback — a chance node's EV is the
+        probability-weighted sum of its branches, a decision node takes the best branch. Each{" "}
+        {single ? "EV" : "option's EV"} is a straight line in p:
+      </p>
+      {data.series.map((s, j) => (
+        <p key={j} style={{ ...wLine, ...wMono }}>
+          {truncate(s.label, 24)}: EV {fmt(s.vals[0])} at p = 0 → EV {fmt(s.vals[N - 1])} at p = 1
+        </p>
+      ))}
+      <p style={wHead}>4 · Finding the switch</p>
+      {single ? (
+        <p style={wLine}>With a single option there's nothing to switch between — the chart just shows how the overall EV responds to p.</p>
+      ) : data.switches.length === 0 ? (
+        <p style={wLine}>The same option has the highest EV at all {N} grid points, so the lines never cross inside the range and no switch is reported.</p>
+      ) : (
+        <>
+          <p style={wLine}>The best option is compared at every grid point; where the leader changes between two neighbouring points, the crossing is reported at their midpoint:</p>
+          {data.switches.map((s, i) => {
+            const idx = Math.min(Math.max(Math.ceil(s.p * (N - 1)), 1), N - 1);
+            return (
+              <p key={i} style={{ ...wLine, ...wMono }}>
+                p = {fmt(data.ps[idx - 1])}: {truncate(data.series[s.from].label, 18)} leads ({fmt(data.series[s.from].vals[idx - 1])} vs {fmt(data.series[s.to].vals[idx - 1])}) ·
+                p = {fmt(data.ps[idx])}: {truncate(data.series[s.to].label, 18)} leads ({fmt(data.series[s.to].vals[idx])} vs {fmt(data.series[s.from].vals[idx])}) → switch at p ≈ {fmt(s.p)}
+              </p>
+            );
+          })}
+        </>
+      )}
+    </Workings>
   );
 }
 
@@ -1008,7 +1087,69 @@ function NashMode({ matrix, setMatrix, defined, define }) {
           </p>
         )}
       </div>
+      <NashWorkings matrix={matrix} sol={sol} />
     </div>
+  );
+}
+
+function NashWorkings({ matrix, sol }) {
+  const R = matrix.rows.length, Cn = matrix.cols.length;
+  const a = (r, c) => num(matrix.cells[r][c].a), b = (r, c) => num(matrix.cells[r][c].b);
+  return (
+    <Workings>
+      <p style={{ ...wHead, marginTop: 0 }}>1 · Best responses</p>
+      <p style={wLine}>Hold the other side's strategy fixed and pick the payoff you like best (ties all count). These are the underlines in the matrix.</p>
+      {matrix.cols.map((cn, c) => (
+        <p key={"c" + c} style={wLine}>
+          If they play <strong>{cn}</strong>, you get <span style={wMono}>{matrix.rows.map((rn, r) => `${rn} ${fmt(a(r, c))}`).join(", ")}</span> → you'd pick <strong>{matrix.rows.filter((_, r) => sol.bestA[r][c]).join(" / ")}</strong>.
+        </p>
+      ))}
+      {matrix.rows.map((rn, r) => (
+        <p key={"r" + r} style={wLine}>
+          If you play <strong>{rn}</strong>, they get <span style={wMono}>{matrix.cols.map((cn, c) => `${cn} ${fmt(b(r, c))}`).join(", ")}</span> → they'd pick <strong>{matrix.cols.filter((_, c) => sol.bestB[r][c]).join(" / ")}</strong>.
+        </p>
+      ))}
+      <p style={wHead}>2 · Pure equilibria</p>
+      <p style={wLine}>
+        {sol.pure.length > 0 ? (
+          <>A cell where both answers point at each other is an equilibrium — neither player gains by
+          switching alone. Here: <strong>{sol.pure.map(([r, c]) => `${matrix.rows[r]} vs ${matrix.cols[c]}`).join("; ")}</strong>.</>
+        ) : (
+          <>No cell is a best response for both players at once, so this game has no pure-strategy equilibrium.</>
+        )}
+      </p>
+      <p style={wHead}>3 · Pareto check</p>
+      <p style={wLine}>A cell is Pareto-efficient (corner dot) unless some other cell pays both players at least as much and one of them strictly more:</p>
+      {matrix.rows.map((rn, r) => matrix.cols.map((cn, c) => {
+        const d = sol.pareto[r][c] ? null : sol.betterThan(r, c);
+        return (
+          <p key={r + "." + c} style={wLine}>
+            <span style={wMono}>{rn} vs {cn} ({fmt(a(r, c))}/{fmt(b(r, c))})</span> — {sol.pareto[r][c]
+              ? "efficient"
+              : d && <>dominated by <strong>{matrix.rows[d.r]} vs {matrix.cols[d.c]}</strong> <span style={wMono}>({fmt(a(d.r, d.c))}/{fmt(b(d.r, d.c))})</span></>}
+          </p>
+        );
+      }))}
+      <p style={wHead}>4 · Mixed strategy</p>
+      {R === 2 && Cn === 2 ? (
+        sol.mixed ? (
+          <>
+            <p style={wLine}>Each player mixes so the <em>other</em> can't gain by leaning either way. p = P(you play <strong>{matrix.rows[0]}</strong>) makes them indifferent between their two strategies:</p>
+            <p style={{ ...wLine, ...wMono, overflowX: "auto", whiteSpace: "nowrap" }}>
+              p·({fmt(b(0, 0))}) + (1−p)·({fmt(b(1, 0))}) = p·({fmt(b(0, 1))}) + (1−p)·({fmt(b(1, 1))}) → p = {fmt(sol.mixed.p)}
+            </p>
+            <p style={wLine}>q = P(they play <strong>{matrix.cols[0]}</strong>) makes you indifferent:</p>
+            <p style={{ ...wLine, ...wMono, overflowX: "auto", whiteSpace: "nowrap" }}>
+              q·({fmt(a(0, 0))}) + (1−q)·({fmt(a(0, 1))}) = q·({fmt(a(1, 0))}) + (1−q)·({fmt(a(1, 1))}) → q = {fmt(sol.mixed.q)}
+            </p>
+          </>
+        ) : (
+          <p style={wLine}>Solving the indifference equations here doesn't give p and q strictly between 0 and 1, so there's no mixed equilibrium beyond the pure analysis above — typical when a player has a dominant strategy.</p>
+        )
+      ) : (
+        <p style={wLine}>Mixed-strategy workings are shown for 2×2 games only.</p>
+      )}
+    </Workings>
   );
 }
 
