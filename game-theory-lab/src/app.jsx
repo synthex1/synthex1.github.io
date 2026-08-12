@@ -372,60 +372,64 @@ const barBtn = (color) => ({
 });
 
 /* ================= AI DRAFTING ================= */
+/* Drafting goes through /api/draft (serverless proxy that holds the API key
+   and the prompt). Access is gated by a passphrase, asked for once and kept
+   in localStorage; a rejected passphrase clears it and asks again. */
 
-const DRAFT_PROMPT =
-  "You convert a plain-language scenario into JSON for a game theory app. " +
-  "Respond with ONLY valid JSON, no markdown fences, no commentary. Schema: " +
-  '{"name":"short title","tree":{...},"matrix":{...}}. ' +
-  'Tree node: {"type":"decision"|"chance"|"terminal","label":"short","prob":number|null,"payoff":number,"children":[...]}. ' +
-  "Rules: root is usually a decision node; children of a chance node each need prob, and probs must sum to 1; " +
-  "terminal nodes need payoff (net value, negative for costs/losses) and empty children; keep labels under 5 words; " +
-  "estimate sensible probabilities and payoffs when the user does not give them. " +
-  'Include "matrix" only if the scenario is a strategic game between two players: ' +
-  '{"rows":["strategy",...],"cols":[...],"cells":[[{"a":rowPayoff,"b":colPayoff},...],...]} (2-4 strategies each, cells[row][col]). ' +
-  "Include tree, matrix, or both as appropriate. Scenario: ";
+const PASS_KEY = "gt-lab-passphrase";
+const getPass = () => { try { return window.localStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } };
+const setPassStore = (p) => { try { window.localStorage.setItem(PASS_KEY, p); } catch (e) { /* in-memory session only */ } };
+const clearPassStore = () => { try { window.localStorage.removeItem(PASS_KEY); } catch (e) { /* ignore */ } };
 
 function DraftAI({ onCreate }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [pass, setPass] = useState("");
+  const [hasPass, setHasPass] = useState(() => !!getPass());
 
   const run = async () => {
     if (!text.trim() || busy) return;
+    const passphrase = hasPass ? getPass() : pass.trim();
+    if (!passphrase) { setErr("Enter the passphrase to use AI drafting."); return; }
     setBusy(true); setErr("");
     try {
-      let raw;
+      let res;
       try {
-        const res = await fetch("https://api.anthropic.com/v1/messages", {
+        res = await fetch("/api/draft", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-6",
-            max_tokens: 1000,
-            messages: [{ role: "user", content: DRAFT_PROMPT + text }],
-          }),
+          body: JSON.stringify({ scenario: text, passphrase }),
         });
-        if (!res.ok) throw new Error("api " + res.status);
-        const data = await res.json();
-        raw = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-      } catch (apiErr) {
-        /* environments without the Anthropic API proxy: fall back to
-           window.claude.complete if the host runtime provides it */
-        if (typeof window.claude?.complete === "function") {
-          raw = await window.claude.complete(DRAFT_PROMPT + text);
-        } else {
-          throw apiErr;
-        }
+      } catch (e) {
+        setErr("Couldn't reach the drafting service — check your connection and try again.");
+        return;
       }
-      const cleaned = raw.replace(/```json|```/g, "").trim();
-      const start = cleaned.indexOf("{");
-      const end = cleaned.lastIndexOf("}");
-      const parsed = JSON.parse(cleaned.slice(start, end + 1));
+      if (res.status === 401) {
+        clearPassStore(); setHasPass(false); setPass("");
+        setErr("That passphrase wasn't accepted — check it and try again.");
+        return;
+      }
+      if (!res.ok) {
+        setErr("The drafting service had a problem — try again in a moment.");
+        return;
+      }
+      let parsed;
+      try {
+        const data = await res.json();
+        const raw = String(data.text || "");
+        const cleaned = raw.replace(/```json|```/g, "").trim();
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        parsed = JSON.parse(cleaned.slice(start, end + 1));
+      } catch (e) {
+        setErr("The draft came back malformed — try again or add a bit more detail.");
+        return;
+      }
+      setPassStore(passphrase); setHasPass(true); setPass("");
       onCreate(parsed);
       setText(""); setOpen(false);
-    } catch (e) {
-      setErr("Couldn't draft that — try again or add a bit more detail.");
     } finally {
       setBusy(false);
     }
@@ -444,6 +448,11 @@ function DraftAI({ onCreate }) {
           <textarea value={text} onChange={e => setText(e.target.value)} rows={3}
             placeholder="e.g. Should I fix my 9-year-old car's transmission for $2,800 or put that toward a newer used car?"
             style={{ width: "100%", marginTop: 6, fontSize: 14, padding: 8, borderRadius: 8, border: `1px solid ${C.line}`, background: C.paper, color: C.ink, resize: "vertical", fontFamily: fontDisplay }} />
+          {!hasPass && (
+            <input type="password" value={pass} onChange={e => setPass(e.target.value)}
+              placeholder="Passphrase" aria-label="Drafting passphrase" autoComplete="current-password"
+              style={{ width: "100%", marginTop: 6, fontSize: 14, padding: 8, borderRadius: 8, border: `1px solid ${C.line}`, background: C.paper, color: C.ink, fontFamily: fontDisplay }} />
+          )}
           {err && <p style={{ margin: "6px 0 0", fontSize: 12, color: C.warn }}>{err}</p>}
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button onClick={run} disabled={busy || !text.trim()}

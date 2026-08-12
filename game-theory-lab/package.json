@@ -1,0 +1,17 @@
+{
+  "name": "game-theory-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:app": "esbuild src/entry.jsx --bundle --minify --jsx=automatic --define:process.env.NODE_ENV='\"production\"' --outfile=src/bundle.js && node src/build.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.116.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
