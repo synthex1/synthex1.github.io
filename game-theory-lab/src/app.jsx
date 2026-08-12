@@ -750,7 +750,7 @@ function NodeCard({ node, solvedRoot, parent, depth, update, addChild, remove, s
           {node.type === "terminal" && (
             <label style={{ fontSize: 12, color: C.inkSoft, display: "flex", alignItems: "center", gap: 4 }}>
               payoff
-              <input type="number" inputMode="decimal" value={node.payoff ?? 0}
+              <input type="number" value={node.payoff ?? 0}
                 onChange={e => update(node.id, { payoff: e.target.value })}
                 style={numStyle(80)} />
             </label>
@@ -957,11 +957,11 @@ function NashMode({ matrix, setMatrix, defined, define }) {
                         }} />
                       )}
                       <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center", fontFamily: fontMono }}>
-                        <input type="number" inputMode="decimal" value={matrix.cells[r][c].a}
+                        <input type="number" value={matrix.cells[r][c].a}
                           onChange={e => setCell(r, c, "a", e.target.value)}
                           style={{ ...cellInput, color: C.decision, textDecoration: sol.bestA[r][c] ? "underline" : "none" }} />
                         <span style={{ color: C.inkSoft }}>/</span>
-                        <input type="number" inputMode="decimal" value={matrix.cells[r][c].b}
+                        <input type="number" value={matrix.cells[r][c].b}
                           onChange={e => setCell(r, c, "b", e.target.value)}
                           style={{ ...cellInput, color: C.chance, textDecoration: sol.bestB[r][c] ? "underline" : "none" }} />
                       </div>
