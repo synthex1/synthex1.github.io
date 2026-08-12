@@ -111,7 +111,7 @@ function normalizeTree(n) {
   const kids = Array.isArray(n?.children) ? n.children : [];
   let type = ["decision", "chance", "terminal"].includes(n?.type) ? n.type : (kids.length ? "decision" : "terminal");
   if (type !== "terminal" && kids.length === 0) type = "terminal";
-  return {
+  const node = {
     id: uid(),
     type,
     label: String(n?.label ?? "Node").slice(0, 60),
@@ -119,6 +119,16 @@ function normalizeTree(n) {
     payoff: num(n?.payoff),
     children: type === "terminal" ? [] : kids.map(normalizeTree),
   };
+  /* collapse pass-through nodes: a non-terminal node with exactly one child
+     decides/varies nothing — splice the child in, keeping this node's label
+     (the option name) and its prob (its place under this node's own parent) */
+  while (node.type !== "terminal" && node.children.length === 1) {
+    const only = node.children[0];
+    node.type = only.type;
+    node.payoff = only.payoff;
+    node.children = only.children;
+  }
+  return node;
 }
 function normalizeMatrix(m) {
   try {
