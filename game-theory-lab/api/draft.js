@@ -40,13 +40,21 @@ export default async function handler(req, res) {
     return;
   }
 
+  /* model choice comes from the client but only as a key into this allowlist */
+  const MODELS = {
+    opus: { model: "claude-opus-5", output_config: { effort: "low" } },
+    sonnet: { model: "claude-sonnet-4-6" },
+    haiku: { model: "claude-haiku-4-5" },
+  };
+  const choice = MODELS[req.body?.model] ?? MODELS.opus;
+
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY from the environment
   try {
     const message = await client.messages.create({
-      model: "claude-opus-5",
+      model: choice.model,
       /* max_tokens caps thinking + text together on Opus 5; leave headroom */
       max_tokens: 6000,
-      output_config: { effort: "low" },
+      ...(choice.output_config ? { output_config: choice.output_config } : {}),
       messages: [{ role: "user", content: DRAFT_PROMPT + scenario.trim() }],
     });
     if (message.stop_reason === "refusal") {
