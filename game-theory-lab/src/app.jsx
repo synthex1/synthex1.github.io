@@ -659,7 +659,7 @@ function Sensitivity({ tree, solved }) {
             </p>
           ))}
           <p style={{ margin: "8px 0 0", fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>
-            Here p is the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>; its sibling branches rescale proportionally as p moves.
+            Here p is the probability of <strong>{data.childLabel}</strong> under <strong>{data.parentLabel}</strong>.
           </p>
         </div>
       )}
@@ -909,19 +909,34 @@ function TreeCanvas({ solved }) {
         {edges.map((e, i) => {
           const x1 = X(e.from) + 10, y1 = Y(e.from), x2 = X(e.to) - 8, y2 = Y(e.to);
           const mx = (x1 + x2) / 2;
-          const label = e.from.type === "chance" ? `p=${fmt(num(e.to.prob))}` : e.to.label;
           return (
-            <g key={i}>
-              <path d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
-                fill="none"
-                className={e.best ? "bestEdge" : undefined}
-                stroke={e.best ? C.best : C.line}
-                strokeWidth={e.best ? 3 : 1.5} />
-              <text x={mx} y={(y1 + y2) / 2 - 6} textAnchor="middle"
+            <path key={i} d={`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`}
+              fill="none"
+              className={e.best ? "bestEdge" : undefined}
+              stroke={e.best ? C.best : C.line}
+              strokeWidth={e.best ? 3 : 1.5} />
+          );
+        })}
+        {edges.map((e, i) => {
+          const x1 = X(e.from) + 10, y1 = Y(e.from), x2 = X(e.to) - 8, y2 = Y(e.to);
+          const mx = (x1 + x2) / 2;
+          const isChance = e.from.type === "chance";
+          return (
+            <g key={"t" + i}>
+              <text x={mx} y={(y1 + y2) / 2 - (isChance ? 17 : 6)} textAnchor="middle"
                 fontSize="10" fontFamily={fontMono}
+                stroke={C.paper} strokeWidth="3" paintOrder="stroke"
                 fill={e.best ? C.best : C.inkSoft}>
-                {truncate(label, 20)}
+                {truncate(e.to.label, isChance ? 18 : 20)}
               </text>
+              {isChance && (
+                <text x={mx} y={(y1 + y2) / 2 - 6} textAnchor="middle"
+                  fontSize="9" fontFamily={fontMono}
+                  stroke={C.paper} strokeWidth="3" paintOrder="stroke"
+                  fill={e.best ? C.best : C.inkSoft}>
+                  p={fmt(num(e.to.prob))}
+                </text>
+              )}
             </g>
           );
         })}
