@@ -1934,5 +1934,93 @@
   },
   "total_matches": 495,
   "winrate": 0.4286
+ },
+ {
+  "date": "2026-08-15",
+  "name": "Fat Tony",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 9
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 10
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 10
+    },
+    {
+     "map_name": "de_train",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 9
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 9
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 0
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 6
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 0
+    }
+   ],
+   "faceit": 6,
+   "faceit_elo": 1226,
+   "leetify": -1.52,
+   "premier": null,
+   "renown": null,
+   "wingman": null
+  },
+  "rating": {
+   "aim": 63.3072,
+   "clutch": 0.0951,
+   "ct_leetify": -0.0141,
+   "opening": 0.0045,
+   "positioning": 58.7064,
+   "t_leetify": -0.0163,
+   "utility": 52.79
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 35.9181,
+   "accuracy_head": 11.7911,
+   "counter_strafing_good_shots_ratio": 85.9632,
+   "ct_opening_aggression_success_rate": 31.664,
+   "ct_opening_duel_success_percentage": 44.2984,
+   "flashbang_hit_foe_avg_duration": 2.5453,
+   "flashbang_hit_foe_per_flashbang": 0.5632,
+   "flashbang_hit_friend_per_flashbang": 0.5055,
+   "flashbang_leading_to_kill": 4.096,
+   "flashbang_thrown": 8.617,
+   "he_foes_damage_avg": 7.5036,
+   "he_friends_damage_avg": 0.6496,
+   "preaim": 12.1042,
+   "reaction_time_ms": 644.269,
+   "spray_accuracy": 39.7883,
+   "t_opening_aggression_success_rate": 34.0983,
+   "t_opening_duel_success_percentage": 34.0983,
+   "trade_kill_opportunities_per_round": 0.3996,
+   "trade_kills_success_percentage": 44.4006,
+   "traded_deaths_success_percentage": 59.2098,
+   "utility_on_death_avg": 349.8114
+  },
+  "total_matches": 496,
+  "winrate": 0.3929
  }
 ]
