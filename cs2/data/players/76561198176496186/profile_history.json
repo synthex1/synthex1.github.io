@@ -4798,5 +4798,105 @@
   },
   "total_matches": 684,
   "winrate": 0.5714
+ },
+ {
+  "date": "2026-09-10",
+  "name": "Peabs",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 11
+    },
+    {
+     "map_name": "cs_italy",
+     "rank": 6
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 14
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 11
+    },
+    {
+     "map_name": "de_mills",
+     "rank": 0
+    },
+    {
+     "map_name": "de_train",
+     "rank": 8
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 7
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 11
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 11
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 8
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_vertigo",
+     "rank": 7
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 8
+    }
+   ],
+   "faceit": 4,
+   "faceit_elo": 957,
+   "leetify": -1.1199999999999999,
+   "premier": null,
+   "renown": null,
+   "wingman": null
+  },
+  "rating": {
+   "aim": 64.8027,
+   "clutch": 0.1047,
+   "ct_leetify": -0.0052,
+   "opening": -0.0216,
+   "positioning": 35.5691,
+   "t_leetify": -0.0175,
+   "utility": 56.5376
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 34.3555,
+   "accuracy_head": 21.8524,
+   "counter_strafing_good_shots_ratio": 79.7614,
+   "ct_opening_aggression_success_rate": 34.9542,
+   "ct_opening_duel_success_percentage": 36.8181,
+   "flashbang_hit_foe_avg_duration": 2.6487,
+   "flashbang_hit_foe_per_flashbang": 0.6184,
+   "flashbang_hit_friend_per_flashbang": 0.5381,
+   "flashbang_leading_to_kill": 6.6865,
+   "flashbang_thrown": 7.4068,
+   "he_foes_damage_avg": 10.1578,
+   "he_friends_damage_avg": 0.1462,
+   "preaim": 10.8603,
+   "reaction_time_ms": 648.2609,
+   "spray_accuracy": 36.1828,
+   "t_opening_aggression_success_rate": 14.1005,
+   "t_opening_duel_success_percentage": 25.8078,
+   "trade_kill_opportunities_per_round": 0.2852,
+   "trade_kills_success_percentage": 37.522,
+   "traded_deaths_success_percentage": 46.6453,
+   "utility_on_death_avg": 327.342
+  },
+  "total_matches": 684,
+  "winrate": 0.5714
  }
 ]
