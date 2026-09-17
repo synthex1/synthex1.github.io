@@ -4838,5 +4838,93 @@
   },
   "total_matches": 497,
   "winrate": 0.3929
+ },
+ {
+  "date": "2026-09-17",
+  "name": "Fat Tony",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 9
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 10
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 10
+    },
+    {
+     "map_name": "de_train",
+     "rank": 0
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 0
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 9
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 0
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 6
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 0
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 0
+    }
+   ],
+   "faceit": 6,
+   "faceit_elo": 1226,
+   "leetify": -1.4200000000000002,
+   "premier": null,
+   "renown": null,
+   "wingman": null
+  },
+  "rating": {
+   "aim": 59.0954,
+   "clutch": 0.0918,
+   "ct_leetify": -0.0123,
+   "opening": 0.0053,
+   "positioning": 59.8706,
+   "t_leetify": -0.016,
+   "utility": 46.2916
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 35.7686,
+   "accuracy_head": 11.9908,
+   "counter_strafing_good_shots_ratio": 85.8543,
+   "ct_opening_aggression_success_rate": 34.2956,
+   "ct_opening_duel_success_percentage": 46.93,
+   "flashbang_hit_foe_avg_duration": 2.4969,
+   "flashbang_hit_foe_per_flashbang": 0.5587,
+   "flashbang_hit_friend_per_flashbang": 0.5252,
+   "flashbang_leading_to_kill": 4.096,
+   "flashbang_thrown": 8.3275,
+   "he_foes_damage_avg": 7.5773,
+   "he_friends_damage_avg": 0.6496,
+   "preaim": 11.952,
+   "reaction_time_ms": 641.1637,
+   "spray_accuracy": 40.3146,
+   "t_opening_aggression_success_rate": 34.0983,
+   "t_opening_duel_success_percentage": 34.0983,
+   "trade_kill_opportunities_per_round": 0.3947,
+   "trade_kills_success_percentage": 43.7427,
+   "traded_deaths_success_percentage": 60.1966,
+   "utility_on_death_avg": 351.8904
+  },
+  "total_matches": 498,
+  "winrate": 0.3929
  }
 ]
