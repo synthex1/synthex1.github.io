@@ -10654,5 +10654,101 @@
   },
   "total_matches": 677,
   "winrate": 0.4667
+ },
+ {
+  "date": "2026-11-12",
+  "name": "Dillon [He/Him]",
+  "ranks": {
+   "competitive": [
+    {
+     "map_name": "de_nuke",
+     "rank": 13
+    },
+    {
+     "map_name": "cs_italy",
+     "rank": 0
+    },
+    {
+     "map_name": "de_cache",
+     "rank": 0
+    },
+    {
+     "map_name": "de_dust2",
+     "rank": 12
+    },
+    {
+     "map_name": "de_train",
+     "rank": 8
+    },
+    {
+     "map_name": "cs_office",
+     "rank": 12
+    },
+    {
+     "map_name": "de_anubis",
+     "rank": 10
+    },
+    {
+     "map_name": "de_mirage",
+     "rank": 12
+    },
+    {
+     "map_name": "de_ancient",
+     "rank": 12
+    },
+    {
+     "map_name": "de_inferno",
+     "rank": 9
+    },
+    {
+     "map_name": "de_vertigo",
+     "rank": 9
+    },
+    {
+     "map_name": "de_overpass",
+     "rank": 9
+    }
+   ],
+   "faceit": null,
+   "faceit_elo": 2002,
+   "leetify": 1.4000000000000001,
+   "premier": 21574,
+   "renown": null,
+   "wingman": 15
+  },
+  "rating": {
+   "aim": 87.0762,
+   "clutch": 0.0946,
+   "ct_leetify": 0.0214,
+   "opening": 0.0369,
+   "positioning": 69.4974,
+   "t_leetify": 0.006,
+   "utility": 55.0427
+  },
+  "stats": {
+   "accuracy_enemy_spotted": 39.7718,
+   "accuracy_head": 21.6312,
+   "counter_strafing_good_shots_ratio": 75.8801,
+   "ct_opening_aggression_success_rate": 63.7183,
+   "ct_opening_duel_success_percentage": 66.2454,
+   "flashbang_hit_foe_avg_duration": 2.752,
+   "flashbang_hit_foe_per_flashbang": 0.6049,
+   "flashbang_hit_friend_per_flashbang": 0.4279,
+   "flashbang_leading_to_kill": 8.1999,
+   "flashbang_thrown": 7.5814,
+   "he_foes_damage_avg": 8.6676,
+   "he_friends_damage_avg": 0.3044,
+   "preaim": 9.2828,
+   "reaction_time_ms": 520.6257,
+   "spray_accuracy": 44.8296,
+   "t_opening_aggression_success_rate": 38.8263,
+   "t_opening_duel_success_percentage": 39.9112,
+   "trade_kill_opportunities_per_round": 0.3333,
+   "trade_kills_success_percentage": 52.0644,
+   "traded_deaths_success_percentage": 49.8149,
+   "utility_on_death_avg": 359.182
+  },
+  "total_matches": 677,
+  "winrate": 0.4667
  }
 ]
