@@ -270,6 +270,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .toast { position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 30px); background: var(--ink); color: #062230; font-weight: 700; padding: 10px 16px; border-radius: 999px; opacity: 0; transition: .25s; pointer-events: none; z-index: 60; max-width: 90vw; text-align: center; font-size: 14px; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .foot { margin-top: 34px; text-align: center; color: var(--muted); font-size: 12px; }
+.foot span { display: block; margin-top: 4px; }
 
 @media (max-width: 520px) {
   .cells { grid-template-columns: repeat(3, 1fr); }

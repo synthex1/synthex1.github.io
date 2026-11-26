@@ -1,5 +1,5 @@
-/* Fathom — game logic. Static, no backend: the daily fish is derived from
-   the date and all progress lives in localStorage. */
+/* Fathom — game logic. Static, no backend of its own: the daily fish is
+   derived from the date, and progress is saved as described under "state". */
 (function () {
   'use strict';
   const { AREAS, REGIONS, DIETS, RARITY, FISH } = window.FATHOM_DATA;
@@ -23,37 +23,160 @@
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-  /* ---------------- state ---------------- */
+  /* ---------------- state ----------------
+     Progress is kept in two places. localStorage is instant but a browser or
+     app can empty it at any time. Where the page runs as a Claude artifact
+     and the player is signed in, a private per-player document is the durable
+     copy, and the two are merged whenever the page loads. */
   function fresh() {
     return {
-      v: 1, seenHelp: false,
+      v: 1, t: 0, base: null, seenHelp: false,
       daily: { days: {}, stats: { played: 0, wins: 0, streak: 0, best: 0, lastWin: 0, dist: [0, 0, 0, 0, 0, 0] } },
       col: { coins: 0, bait: 0, useBait: false, caught: {}, seen: {}, unlocked: ['pond'], area: 'pond', gear: { rod: 0, reel: 0, line: 0, lure: 0 } }
     };
   }
+  const num = (v, d, lo, hi) => { v = Number(v); return Number.isFinite(v) ? clamp(v, lo, hi) : d; };
+  const int = (v, d, lo, hi) => Math.floor(num(v, d, lo, hi));
+  const obj = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+
+  /* Rebuild a save from stored data, keeping only what is well-formed. */
+  function adopt(raw) {
+    if (!raw || typeof raw !== 'object' || raw.v !== 1) return null;
+    const o = fresh(), d = obj(raw.daily), c = obj(raw.col), days = obj(d.days), st = obj(d.stats);
+    o.t = num(raw.t, 0, 0, 1e15);
+    o.seenHelp = !!raw.seenHelp;
+    for (const k of Object.keys(days)) {
+      const n = Number(k), x = days[k];
+      if (!Number.isInteger(n) || !x || !BY_ID[x.a] || !Array.isArray(x.g)) continue;
+      const day = { a: x.a, g: x.g.filter(id => typeof id === 'string' && BY_ID[id]).slice(0, MAX_GUESSES), done: !!x.done, won: !!x.won };
+      if (x.reward && typeof x.reward === 'object') day.reward = { coins: int(x.reward.coins, 0, 0, 1e6), bait: int(x.reward.bait, 0, 0, 100) };
+      o.daily.days[n] = day;
+    }
+    ['played', 'wins', 'streak', 'best', 'lastWin'].forEach(k => { o.daily.stats[k] = int(st[k], 0, 0, 1e7); });
+    if (Array.isArray(st.dist)) o.daily.stats.dist = o.daily.stats.dist.map((_, n) => int(st.dist[n], 0, 0, 1e7));
+    o.col.coins = int(c.coins, 0, 0, 1e12);
+    o.col.bait = int(c.bait, 0, 0, 1e6);
+    o.col.useBait = !!c.useBait;
+    const caught = obj(c.caught), seen = obj(c.seen), unlocked = Array.isArray(c.unlocked) ? c.unlocked : [];
+    for (const id of Object.keys(caught)) if (BY_ID[id] && caught[id]) o.col.caught[id] = { n: int(caught[id].n, 1, 1, 1e9), best: num(caught[id].best, 0.3, 0, 1) };
+    for (const id of Object.keys(seen)) if (BY_ID[id] && seen[id]) o.col.seen[id] = true;
+    o.col.unlocked = AREAS.filter(x => x.id === 'pond' || unlocked.includes(x.id)).map(x => x.id);
+    GEAR.forEach(g => { o.col.gear[g.id] = int(obj(c.gear)[g.id], 0, 0, GEAR_COST.length); });
+    o.col.area = AREA[c.area] && o.col.unlocked.includes(c.area) ? c.area : 'pond';
+    if (raw.base && typeof raw.base === 'object') o.base = { coins: int(raw.base.coins, 0, 0, 1e12), bait: int(raw.base.bait, 0, 0, 1e6) };
+    return o;
+  }
   function load() {
-    const base = fresh();
-    try {
-      const s = JSON.parse(localStorage.getItem(KEY));
-      if (s && s.v === 1) {
-        Object.assign(base.daily, s.daily || {});
-        base.daily.stats = Object.assign(fresh().daily.stats, (s.daily || {}).stats || {});
-        Object.assign(base.col, s.col || {});
-        base.col.gear = Object.assign(fresh().col.gear, (s.col || {}).gear || {});
-        base.seenHelp = !!s.seenHelp;
-      }
-    } catch (e) { /* storage unavailable or corrupt: start fresh */ }
-    if (!AREA[base.col.area] || !base.col.unlocked.includes(base.col.area)) base.col.area = 'pond';
-    return base;
+    try { return adopt(JSON.parse(localStorage.getItem(KEY))) || fresh(); }
+    catch (e) { return fresh(); } // storage unavailable or corrupt
   }
   const S = load();
   function save() {
-    try {
-      const keys = Object.keys(S.daily.days).map(Number).sort((a, b) => a - b);
-      while (keys.length > 40) delete S.daily.days[keys.shift()];
-      localStorage.setItem(KEY, JSON.stringify(S));
-    } catch (e) { /* ignore */ }
+    const keys = Object.keys(S.daily.days).map(Number).sort((x, y) => x - y);
+    while (keys.length > 40) delete S.daily.days[keys.shift()];
+    S.t = Date.now();
+    saveLocal();
+    queuePush();
   }
+  function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+
+  /* Combine this device's save (L) with the account's (R) so that nothing
+     earned on either side is lost. Collections are unioned. Coins and bait
+     can go down as well as up, so the account's figure is taken and whatever
+     this device earned or spent since it last synced is applied on top. */
+  function mergeStates(L, R, keepArea) {
+    const M = fresh(), c = M.col, base = L.base || { coins: 0, bait: 0 };
+    M.t = Math.max(L.t, R.t);
+    M.seenHelp = L.seenHelp || R.seenHelp;
+    for (const src of [L, R]) {
+      for (const k of Object.keys(src.daily.days)) {
+        const d = src.daily.days[k], cur = M.daily.days[k];
+        if (!cur || (d.done && !cur.done) || (d.done === cur.done && d.g.length > cur.g.length)) M.daily.days[k] = d;
+      }
+      for (const id of Object.keys(src.col.caught)) {
+        const e = src.col.caught[id], cur = c.caught[id];
+        c.caught[id] = cur ? { n: Math.max(cur.n, e.n), best: Math.max(cur.best, e.best) } : { n: e.n, best: e.best };
+      }
+      Object.assign(c.seen, src.col.seen);
+    }
+    const sl = L.daily.stats, sr = R.daily.stats;
+    M.daily.stats = sr.played > sl.played || (sr.played === sl.played && sr.best > sl.best) ? sr : sl;
+    c.unlocked = AREAS.filter(x => L.col.unlocked.includes(x.id) || R.col.unlocked.includes(x.id)).map(x => x.id);
+    GEAR.forEach(g => { c.gear[g.id] = Math.max(L.col.gear[g.id], R.col.gear[g.id]); });
+    c.coins = Math.max(0, R.col.coins + L.col.coins - base.coins);
+    c.bait = Math.max(0, R.col.bait + L.col.bait - base.bait);
+    c.useBait = L.col.useBait && c.bait > 0;
+    // a device that has never synced opens where the account had got to
+    c.area = !keepArea && !L.base && AREA[R.col.area].i > AREA[L.col.area].i ? R.col.area : L.col.area;
+    M.base = { coins: R.col.coins, bait: R.col.bait };
+    return M;
+  }
+
+  /* --- the account copy --- */
+  let cloudRef = null, cloudOn = false, cloudBusy = false, cloudDirty = false, pushTimer = null, lastPull = 0;
+  const cloudBody = () => JSON.parse(JSON.stringify({ v: 1, t: S.t, seenHelp: S.seenHelp, daily: S.daily, col: S.col }));
+  const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => { o[key] = x[key]; return o; }, {}) : x));
+  const within = (p, ms) => Promise.race([p, new Promise((res, rej) => setTimeout(() => rej({ code: 'unavailable' }), ms))]);
+  function setCloud(on) {
+    cloudOn = on;
+    const el = $('save-note');
+    if (el) el.textContent = on ? 'Progress is saved to your Claude account.' : 'Progress is saved in this browser only.';
+  }
+  function queuePush() {
+    if (!cloudRef) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(pushCloud, 1200);
+  }
+  async function pushCloud() {
+    clearTimeout(pushTimer);
+    if (!cloudRef) return;
+    if (cloudBusy) { cloudDirty = true; return; }
+    cloudBusy = true;
+    const body = cloudBody();
+    try {
+      await within(cloudRef.set(body), 15000);
+      S.base = { coins: body.col.coins, bait: body.col.bait };
+      saveLocal();
+      setCloud(true);
+    } catch (e) {
+      // "unavailable" is a passing fault and the next save tries again; anything
+      // else means this player cannot write here, so stay on browser storage
+      if (!e || e.code !== 'unavailable') { cloudRef = null; setCloud(false); }
+    }
+    cloudBusy = false;
+    if (cloudDirty) { cloudDirty = false; queuePush(); }
+  }
+  async function pullCloud() {
+    if (!cloudRef || cloudBusy) return;
+    lastPull = Date.now();
+    let snap;
+    try { snap = await within(cloudRef.get(), 10000); } catch (e) { return; }
+    const R = snap && snap.exists ? adopt(snap.data()) : null;
+    if (!R) { if (S.t) pushCloud(); else setCloud(true); return; }
+    const before = canon(cloudBody());
+    const M = mergeStates(S, R, fs.phase !== 'idle');
+    S.t = M.t; S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col;
+    saveLocal();
+    setCloud(true);
+    const after = canon(cloudBody());
+    if (after !== before) refreshView();
+    if (after !== canon({ v: 1, t: R.t, seenHelp: R.seenHelp, daily: R.daily, col: R.col })) pushCloud();
+  }
+  async function initCloud() {
+    try {
+      if (!window.claude || typeof window.claude.use !== 'function') return;
+      const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      if (!db || !user) return;
+      const uid = await user.id();
+      if (!uid) return;
+      cloudRef = db.doc('data/users/' + uid + '/save');
+      await pullCloud();
+    } catch (e) { /* no account copy on this view */ }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { if (pushTimer) pushCloud(); }
+    else if (cloudRef && Date.now() - lastPull > 60000) pullCloud();
+  });
 
   /* ---------------- formatting ---------------- */
   const trim = (n, d) => String(+n.toFixed(d));
@@ -726,10 +849,19 @@
     if (b) showTab(b.dataset.tab);
   });
 
+  function refreshView() {
+    if (currentTab === 'daily') renderDaily();
+    if (currentTab === 'fish') renderFishing();
+    if (currentTab === 'journal') renderJournal();
+    if (S.seenHelp && $('help-ok')) closeModal();
+  }
+
   setPhase('idle');
   renderDaily();
+  setCloud(false);
   if (!S.seenHelp) showHelp();
+  initCloud();
 
   // exposed for automated tests
-  window.__fathom = { S, FISH, compare, answerFor, dayNum, fightInit, fightStep, pickFish, shareText, save, BY_ID };
+  window.__fathom = { get S() { return S; }, FISH, compare, answerFor, dayNum, fightInit, fightStep, pickFish, shareText, save, BY_ID, mergeStates, adopt, fresh };
 })();
