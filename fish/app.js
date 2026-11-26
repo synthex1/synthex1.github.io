@@ -335,7 +335,8 @@
      FREE FISHING
      ===================================================================== */
   const scene = $('scene'), actBtn = $('btn-act');
-  let fs = { phase: 'idle' }, timer = null, raf = 0, holding = false;
+  let fs = { phase: 'idle' }, timer = null, raf = 0, holding = false, sceneArea = null, pendingCatch = null, landTimer = null;
+  const fx = new window.FathomScene.Fx($('fx'), () => fs);
 
   function areaCaught(areaId) { return FISH.filter(f => f.area === areaId && S.col.caught[f.id]).length; }
   function areaTotal(areaId) { return FISH.filter(f => f.area === areaId).length; }
@@ -404,7 +405,7 @@
 
   function setPhase(phase, status) {
     fs.phase = phase;
-    scene.classList.remove('idle', 'wait', 'bite', 'fight', 'shake');
+    scene.classList.remove('idle', 'wait', 'bite', 'fight', 'land', 'shake');
     scene.classList.add(phase);
     actBtn.classList.remove('hook', 'wait');
     $('alert').hidden = phase !== 'bite';
@@ -413,6 +414,7 @@
     if (phase === 'wait') { actBtn.textContent = 'Wait for it…'; actBtn.classList.add('wait'); }
     if (phase === 'bite') { actBtn.textContent = 'Hook it!'; actBtn.classList.add('hook'); }
     if (phase === 'fight') actBtn.textContent = 'Hold to reel';
+    if (phase === 'land') { actBtn.textContent = 'Got it!'; actBtn.classList.add('wait'); }
     if (status) $('status').textContent = status;
   }
   function resetFishing(status) {
@@ -426,6 +428,7 @@
 
   function cast() {
     setPhase('wait', 'Waiting for a bite…');
+    fx.cast();
     timer = setTimeout(() => {
       setPhase('bite', 'Bite! Hook it!');
       timer = setTimeout(() => resetFishing('Too slow. It stole the bait.'), 1400);
@@ -438,6 +441,7 @@
     const fish = pickFish(S.col.area, useBait);
     if (useBait) { S.col.bait--; if (!S.col.bait) S.col.useBait = false; save(); renderWallet(); }
     fs.fish = fish;
+    fx.hook(fish);
     fs.f = fightInit(fish, S.col.gear, Math.random);
     fs.last = performance.now();
     const feel = { common: 'A light tug', uncommon: 'A solid pull', rare: 'Something strong!', legendary: 'A monster on the line!' }[fish.rarity];
@@ -459,7 +463,6 @@
     $('strain-txt').textContent = warn;
     $('fight-feel').hidden = !!warn;
     scene.classList.toggle('shake', f.surge > 0);
-    $('shadow').style.transform = `translateX(${Math.sin(f.t * 3) * 26}px) scale(${0.8 + f.diff * 0.25})`;
   }
 
   function loop(now) {
@@ -468,11 +471,28 @@
     const out = fightStep(fs.f, dt, holding);
     drawFight();
     if (!out) { raf = requestAnimationFrame(loop); return; }
-    if (out === 'caught') landFish(fs.fish);
-    else resetFishing(out === 'snap' ? 'Snap! Too much tension and the line broke.' : 'Too slack. It threw the hook and got away.');
+    if (out === 'caught') {
+      // The catch is saved straight away; the leap is only for show.
+      pendingCatch = recordCatch(fs.fish);
+      holding = false; actBtn.classList.remove('down');
+      setPhase('land', 'Got it!');
+      fx.caught(finishLanding);
+      landTimer = setTimeout(finishLanding, 1500);
+    } else {
+      fx.lost(out);
+      resetFishing(out === 'snap' ? 'Snap! Too much tension and the line broke.' : 'Too slack. It threw the hook and got away.');
+    }
+  }
+  function finishLanding() {
+    clearTimeout(landTimer);
+    if (!pendingCatch) return;
+    const c = pendingCatch; pendingCatch = null;
+    resetFishing('Nice catch. Cast again when you are ready.');
+    renderFishing();
+    showCatch(c);
   }
 
-  function landFish(fish) {
+  function recordCatch(fish) {
     const frac = 0.3 + 0.7 * Math.pow(Math.random(), 2.2);
     const area = AREA[fish.area], rec = S.col.caught[fish.id];
     const isNew = !rec, isRecord = !!rec && frac > rec.best;
@@ -481,8 +501,10 @@
     S.col.caught[fish.id] = { n: (rec ? rec.n : 0) + 1, best: rec ? Math.max(rec.best, frac) : frac };
     S.col.coins += coins;
     save();
-    resetFishing('Nice catch. Cast again when you are ready.');
-    renderFishing();
+    return { fish, frac, coins, isNew, isRecord };
+  }
+  function showCatch(c) {
+    const { fish, frac, coins, isNew, isRecord } = c;
     const badges = (isNew ? '<span class="badge">New species · double coins</span>' : '') +
       (isRecord ? '<span class="badge">Personal best</span>' : '') +
       (frac >= 0.9 ? '<span class="badge">Trophy size</span>' : '');
@@ -529,7 +551,11 @@
     if (!e.repeat) press();
   });
   window.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') release(); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && fs.phase !== 'idle') resetFishing('The fish got away while you were gone.'); });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    if (fs.phase === 'land') finishLanding();
+    else if (fs.phase !== 'idle') resetFishing('The fish got away while you were gone.');
+  });
 
   /* --- areas, wallet, shop --- */
   function renderWallet() {
@@ -559,6 +585,11 @@
     scene.style.setProperty('--sea1', cur.sea[0]);
     scene.style.setProperty('--sea2', cur.sea[1]);
     scene.classList.toggle('night', cur.id === 'deep');
+    if (sceneArea !== cur.id) {
+      sceneArea = cur.id;
+      $('backdrop').innerHTML = window.FathomScene.backdrop(cur.id);
+      fx.setArea(cur.id);
+    }
     renderNote();
   }
   function renderNote() {
@@ -677,8 +708,12 @@
      ===================================================================== */
   let currentTab = 'daily';
   function showTab(tab) {
-    if (currentTab === 'fish' && tab !== 'fish' && fs.phase !== 'idle') resetFishing();
+    if (currentTab === 'fish' && tab !== 'fish') {
+      if (fs.phase === 'land') finishLanding();
+      else if (fs.phase !== 'idle') resetFishing();
+    }
     currentTab = tab;
+    if (tab === 'fish') fx.start(); else fx.stop();
     document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
     ['daily', 'fish', 'journal'].forEach(t => { $('view-' + t).hidden = t !== tab; });
     if (tab === 'daily') renderDaily();

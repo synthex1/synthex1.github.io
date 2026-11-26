@@ -80,17 +80,8 @@
       <div id="areas" class="areas" role="tablist" aria-label="Fishing areas"></div>
 
       <div id="scene" class="scene">
-        <div class="sun"></div>
-        <svg class="rodline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path id="rod" d="M-2,34 L20,6" /><path id="line" d="M20,6 Q50,10 62,52" />
-        </svg>
-        <div class="water">
-          <svg class="waves" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0,20 Q50,4 100,20 T200,20 T300,20 T400,20 T500,20 T600,20 T700,20 T800,20 T900,20 T1000,20 T1100,20 T1200,20 V40 H0 Z"/>
-          </svg>
-          <div id="shadow" class="shadow"></div>
-        </div>
-        <div id="bobber" class="bobber"><i></i></div>
+        <div id="backdrop" class="backdrop"></div>
+        <canvas id="fx" class="fx"></canvas>
         <div id="alert" class="alert" hidden>!</div>
         <div id="fight" class="fight" hidden>
           <div class="fight-row bar-label"><span>Line in</span><div class="progress"><div id="prog"></div></div></div>
@@ -129,6 +120,7 @@
 
 <script src="data.js"></script>
 <script src="art.js"></script>
+<script src="scene.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
