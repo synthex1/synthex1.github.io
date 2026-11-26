@@ -30,7 +30,7 @@
      copy, and the two are merged whenever the page loads. */
   function fresh() {
     return {
-      v: 1, t: 0, base: null, seenHelp: false,
+      v: 1, t: 0, base: null, pending: null, rev: '', seenHelp: false,
       daily: { days: {}, stats: { played: 0, wins: 0, streak: 0, best: 0, lastWin: 0, dist: [0, 0, 0, 0, 0, 0] } },
       col: { coins: 0, bait: 0, useBait: false, caught: {}, seen: {}, unlocked: ['pond'], area: 'pond', gear: { rod: 0, reel: 0, line: 0, lure: 0 } }
     };
@@ -64,6 +64,9 @@
     GEAR.forEach(g => { o.col.gear[g.id] = int(obj(c.gear)[g.id], 0, 0, GEAR_COST.length); });
     o.col.area = AREA[c.area] && o.col.unlocked.includes(c.area) ? c.area : 'pond';
     if (raw.base && typeof raw.base === 'object') o.base = { coins: int(raw.base.coins, 0, 0, 1e12), bait: int(raw.base.bait, 0, 0, 1e6) };
+    const pd = raw.pending;
+    if (pd && typeof pd === 'object' && typeof pd.rev === 'string') o.pending = { rev: pd.rev.slice(0, 40), coins: int(pd.coins, 0, 0, 1e12), bait: int(pd.bait, 0, 0, 1e6) };
+    if (typeof raw.rev === 'string') o.rev = raw.rev.slice(0, 40);
     return o;
   }
   function load() {
@@ -84,7 +87,7 @@
      earned on either side is lost. Collections are unioned. Coins and bait
      can go down as well as up, so the account's figure is taken and whatever
      this device earned or spent since it last synced is applied on top. */
-  function mergeStates(L, R, keepArea) {
+  function mergeStates(L, R, keepArea, fromBackup) {
     const M = fresh(), c = M.col, base = L.base || { coins: 0, bait: 0 };
     M.t = Math.max(L.t, R.t);
     M.seenHelp = L.seenHelp || R.seenHelp;
@@ -103,78 +106,142 @@
     M.daily.stats = sr.played > sl.played || (sr.played === sl.played && sr.best > sl.best) ? sr : sl;
     c.unlocked = AREAS.filter(x => L.col.unlocked.includes(x.id) || R.col.unlocked.includes(x.id)).map(x => x.id);
     GEAR.forEach(g => { c.gear[g.id] = Math.max(L.col.gear[g.id], R.col.gear[g.id]); });
-    c.coins = Math.max(0, R.col.coins + L.col.coins - base.coins);
-    c.bait = Math.max(0, R.col.bait + L.col.bait - base.bait);
+    // a backup code is a snapshot rather than a live copy, so there the larger figure wins
+    c.coins = fromBackup ? Math.max(L.col.coins, R.col.coins) : Math.max(0, R.col.coins + L.col.coins - base.coins);
+    c.bait = fromBackup ? Math.max(L.col.bait, R.col.bait) : Math.max(0, R.col.bait + L.col.bait - base.bait);
     c.useBait = L.col.useBait && c.bait > 0;
     // a device that has never synced opens where the account had got to
     c.area = !keepArea && !L.base && AREA[R.col.area].i > AREA[L.col.area].i ? R.col.area : L.col.area;
-    M.base = { coins: R.col.coins, bait: R.col.bait };
+    M.base = fromBackup ? L.base : { coins: R.col.coins, bait: R.col.bait };
     return M;
   }
 
   /* --- the account copy --- */
-  let cloudRef = null, cloudOn = false, cloudBusy = false, cloudDirty = false, pushTimer = null, lastPull = 0;
+  const SLOT_KEY = 'fathom.slot';
+  let cloudRef = null, cloudDb = null, cloudKind = 'local', cloudOn = false, canName = false, slot = '', cloudBusy = false, cloudDirty = false, pushTimer = null, pushQueued = false, lastPull = 0;
   const cloudBody = () => JSON.parse(JSON.stringify({ v: 1, t: S.t, seenHelp: S.seenHelp, daily: S.daily, col: S.col }));
   const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => { o[key] = x[key]; return o; }, {}) : x));
   const within = (p, ms) => Promise.race([p, new Promise((res, rej) => setTimeout(() => rej({ code: 'unavailable' }), ms))]);
-  function setCloud(on) {
-    cloudOn = on;
+  /* kind: 'account' (the player's private save), 'named' (a save the player
+     names, for people who can write here but have no personal id), or 'local'. */
+  function setCloud(kind) {
+    cloudOn = kind !== 'local';
     const el = $('save-note');
-    if (el) el.textContent = on ? 'Progress is saved to your Claude account.' : 'Progress is saved in this browser only.';
+    if (!el) return;
+    el.textContent = kind === 'account' ? 'Progress is saved to your Claude account.'
+      : kind === 'named' ? `Progress is saved here as "${slot}".`
+      : canName ? 'Progress is not backed up yet. Tap to set a save name.'
+      : 'Progress is saved in this browser only. Tap for backup options.';
   }
   function queuePush() {
     if (!cloudRef) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(pushCloud, 1200);
+    pushQueued = true;
   }
+  /* Reading and writing the account copy never overlap: a read that was in
+     flight while a write landed would merge against a stale copy. */
   async function pushCloud() {
     clearTimeout(pushTimer);
+    pushQueued = false;
     if (!cloudRef) return;
     if (cloudBusy) { cloudDirty = true; return; }
     cloudBusy = true;
     const body = cloudBody();
+    // Tag the write and note it locally first. If the page closes after the
+    // write lands but before that is recorded, the tag shows on the next load
+    // that this device's changes are already in the account copy.
+    body.rev = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    S.pending = { rev: body.rev, coins: body.col.coins, bait: body.col.bait };
+    saveLocal();
     try {
       await within(cloudRef.set(body), 15000);
       S.base = { coins: body.col.coins, bait: body.col.bait };
+      S.pending = null;
       saveLocal();
-      setCloud(true);
+      setCloud(cloudKind);
     } catch (e) {
       // "unavailable" is a passing fault and the next save tries again; anything
       // else means this player cannot write here, so stay on browser storage
-      if (!e || e.code !== 'unavailable') { cloudRef = null; setCloud(false); }
+      if (!e || e.code !== 'unavailable') { cloudRef = null; canName = false; setCloud('local'); }
     }
     cloudBusy = false;
     if (cloudDirty) { cloudDirty = false; queuePush(); }
   }
   async function pullCloud() {
     if (!cloudRef || cloudBusy) return;
+    cloudBusy = true;
     lastPull = Date.now();
-    let snap;
-    try { snap = await within(cloudRef.get(), 10000); } catch (e) { return; }
-    const R = snap && snap.exists ? adopt(snap.data()) : null;
-    if (!R) { if (S.t) pushCloud(); else setCloud(true); return; }
-    const before = canon(cloudBody());
-    const M = mergeStates(S, R, fs.phase !== 'idle');
-    S.t = M.t; S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col;
-    saveLocal();
-    setCloud(true);
-    const after = canon(cloudBody());
-    if (after !== before) refreshView();
-    if (after !== canon({ v: 1, t: R.t, seenHelp: R.seenHelp, daily: R.daily, col: R.col })) pushCloud();
+    let needPush = false;
+    try {
+      const snap = await within(cloudRef.get(), 10000);
+      const R = snap && snap.exists ? adopt(snap.data()) : null;
+      if (!R) { needPush = !!S.t; if (!needPush) setCloud(cloudKind); }
+      else {
+        if (S.pending && R.rev && R.rev === S.pending.rev) S.base = { coins: S.pending.coins, bait: S.pending.bait };
+        S.pending = null;
+        const before = canon(cloudBody());
+        const M = mergeStates(S, R, fs.phase !== 'idle');
+        S.t = M.t; S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col;
+        saveLocal();
+        setCloud(cloudKind);
+        const after = canon(cloudBody());
+        if (after !== before) refreshView();
+        needPush = after !== canon({ v: 1, t: R.t, seenHelp: R.seenHelp, daily: R.daily, col: R.col });
+      }
+    } catch (e) { /* could not reach it this time; the browser copy carries on */ }
+    cloudBusy = false;
+    if (needPush || cloudDirty) { cloudDirty = false; await pushCloud(); }
   }
+  const slug = s => String(s || '').toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 40);
   async function initCloud() {
     try {
       if (!window.claude || typeof window.claude.use !== 'function') return;
       const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-      if (!db || !user) return;
-      const uid = await user.id();
-      if (!uid) return;
-      cloudRef = db.doc('data/users/' + uid + '/save');
-      await pullCloud();
+      if (!db) return;
+      const uid = user ? await user.id() : null;
+      if (uid) {
+        cloudKind = 'account';
+        cloudRef = db.doc('data/users/' + uid + '/save');
+        await pullCloud();
+        return;
+      }
+      // Signed in and allowed to write, but with no personal id (the platform
+      // gives none to some invited editors): they keep a save under a name.
+      if (user && (await user.can('data.write')) === false) return;
+      cloudDb = db; canName = true;
+      let stored = '';
+      try { stored = slug(localStorage.getItem(SLOT_KEY)); } catch (e) { /* ignore */ }
+      if (stored.length >= 2) await useSlot(stored);
+      else { setCloud('local'); toast('Set a save name at the bottom of the page to keep your progress'); }
     } catch (e) { /* no account copy on this view */ }
   }
+  async function useSlot(name) {
+    let prev = '';
+    try { prev = slug(localStorage.getItem(SLOT_KEY)); localStorage.setItem(SLOT_KEY, name); } catch (e) { /* ignore */ }
+    slot = name; cloudKind = 'named';
+    cloudRef = cloudDb.doc('saves/' + name);
+    if (name !== prev) { S.base = null; S.pending = null; } // a different save: this device has synced nothing with it yet
+    await pullCloud();
+    if (cloudRef) await pushCloud(); // one write up front proves this save can be kept
+  }
+
+  /* --- backup codes: the whole save as text, for anywhere nothing else is durable --- */
+  const b64 = { enc: s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''), dec: s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/')))) };
+  const backupCode = () => 'FATHOM1.' + b64.enc(JSON.stringify(cloudBody()));
+  function restoreBackup(code) {
+    let R = null;
+    try { const m = /FATHOM1\.([A-Za-z0-9_-]+)/.exec(String(code).replace(/\s+/g, '')); R = m && adopt(JSON.parse(b64.dec(m[1]))); } catch (e) { R = null; }
+    if (!R) return false;
+    const M = mergeStates(S, R, fs.phase !== 'idle', true);
+    S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col;
+    save();
+    refreshView();
+    return true;
+  }
+
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { if (pushTimer) pushCloud(); }
+    if (document.hidden) { if (pushQueued) pushCloud(); } // flush a waiting change, never re-send an old copy
     else if (cloudRef && Date.now() - lastPull > 60000) pullCloud();
   });
 
@@ -451,6 +518,44 @@
        <h3>Guess distribution</h3><div class="dist">${dist}</div>
        <h3>Journal</h3><p>${caught} of ${FISH.length} species caught.</p>`);
   }
+  function showSaves() {
+    const status = cloudKind === 'account' && cloudOn ? 'Your progress is saved to your Claude account and follows you between devices.'
+      : cloudKind === 'named' && cloudOn ? 'Your progress is saved on this page under the name below. Type the same name on another device to carry on there.'
+      : canName ? 'Give your save a name and your progress is kept on this page, not just in this browser.'
+      : 'Your progress is kept in this browser. A backup code lets you restore it if the browser ever forgets.';
+    openModal(
+      `<h2>Your save</h2><p id="sv-status"></p>
+       ${canName ? `<h3>Save name</h3>
+         <div class="sv-row"><input id="sv-name" type="text" maxlength="40" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="for example sydney" aria-label="Save name"><button class="btn small" id="sv-use">Use</button></div>
+         <p class="muted" id="sv-name-msg">Letters and numbers. Anyone you share this game with could load a save if they know its name.</p>` : ''}
+       <h3>Backup code</h3>
+       <p class="muted">Copy this code somewhere safe, such as a note. Pasting it back restores everything.</p>
+       <div class="sv-row"><button class="btn small" id="sv-copy">Copy backup code</button></div>
+       <textarea id="sv-code" rows="3" spellcheck="false" autocapitalize="off" placeholder="Paste a backup code here" aria-label="Backup code"></textarea>
+       <div class="sv-row"><button class="btn small ghost" id="sv-restore">Restore from code</button><span class="muted" id="sv-msg"></span></div>`);
+    $('sv-status').textContent = status;
+    if (canName) {
+      $('sv-name').value = slot;
+      $('sv-use').addEventListener('click', async () => {
+        const name = slug($('sv-name').value);
+        if (name.length < 2) { $('sv-name-msg').textContent = 'Use at least two letters or numbers.'; return; }
+        $('sv-use').disabled = true; $('sv-name-msg').textContent = 'Saving…';
+        await useSlot(name);
+        if ($('sv-name-msg')) $('sv-name-msg').textContent = cloudOn ? `Saved as "${name}". Use this name on any device.` : 'That did not work here, so progress stays in this browser. A backup code still works.';
+        if ($('sv-use')) $('sv-use').disabled = false;
+      });
+    }
+    $('sv-copy').addEventListener('click', () => {
+      const code = backupCode(), box = $('sv-code');
+      const shown = () => { box.value = code; box.focus(); box.select(); $('sv-msg').textContent = 'Code is in the box. Copy it from there.'; };
+      try { navigator.clipboard.writeText(code).then(() => { $('sv-msg').textContent = 'Backup code copied.'; }, shown); } catch (e) { shown(); }
+    });
+    $('sv-restore').addEventListener('click', () => {
+      const ok = restoreBackup($('sv-code').value);
+      if (ok) { closeModal(); toast('Progress restored'); } else $('sv-msg').textContent = 'That is not a Fathom backup code.';
+    });
+  }
+  $('save-note').addEventListener('click', showSaves);
   $('btn-help').addEventListener('click', showHelp);
   $('btn-stats').addEventListener('click', showStats);
 
@@ -665,7 +770,7 @@
   fishView.addEventListener('pointerdown', e => { if (fs.phase === 'bite' || fs.phase === 'fight') { e.preventDefault(); press(); } });
   fishView.addEventListener('touchstart', e => { if (fs.phase !== 'idle') e.preventDefault(); }, { passive: false });
   fishView.addEventListener('contextmenu', e => { if (fs.phase !== 'idle' || e.target.closest('#btn-act, #scene')) e.preventDefault(); });
-  document.addEventListener('selectstart', e => { if (currentTab === 'fish' && !e.target.closest?.('input')) e.preventDefault(); });
+  document.addEventListener('selectstart', e => { if (currentTab === 'fish' && !e.target.closest?.('input, textarea')) e.preventDefault(); });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeModal(); return; }
     if (currentTab !== 'fish' || (e.key !== ' ' && e.key !== 'Enter')) return;
@@ -858,10 +963,10 @@
 
   setPhase('idle');
   renderDaily();
-  setCloud(false);
+  setCloud('local');
   if (!S.seenHelp) showHelp();
   initCloud();
 
   // exposed for automated tests
-  window.__fathom = { get S() { return S; }, FISH, compare, answerFor, dayNum, fightInit, fightStep, pickFish, shareText, save, BY_ID, mergeStates, adopt, fresh };
+  window.__fathom = { get S() { return S; }, FISH, compare, answerFor, dayNum, fightInit, fightStep, pickFish, shareText, save, BY_ID, mergeStates, adopt, fresh, backupCode, restoreBackup };
 })();
