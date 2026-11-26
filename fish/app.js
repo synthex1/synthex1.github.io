@@ -421,6 +421,7 @@
     holding = false;
     actBtn.classList.remove('down');
     setPhase('idle', status || 'Cast your line.');
+    renderNote();
   }
 
   function cast() {
@@ -441,7 +442,8 @@
     fs.last = performance.now();
     const feel = { common: 'A light tug', uncommon: 'A solid pull', rare: 'Something strong!', legendary: 'A monster on the line!' }[fish.rarity];
     $('fight-feel').textContent = feel;
-    setPhase('fight', 'Hold to reel. Keep the marker in the green.');
+    setPhase('fight');
+    $('area-note').textContent = 'Keep the marker in the green. Too far right snaps the line, too far left lets the fish go.';
     drawFight();
     raf = requestAnimationFrame(loop);
   }
@@ -453,7 +455,9 @@
     $('zone').style.width = f.width + '%';
     $('prog').style.width = clamp(f.P, 0, 100) + '%';
     $('tension').classList.toggle('strain', f.where === 1);
-    $('strain-txt').textContent = f.strain > 30 ? 'Line straining!' : f.where === -1 ? 'Too slack' : '';
+    const warn = f.strain > 30 ? 'Line straining!' : f.where === -1 ? 'Too slack' : '';
+    $('strain-txt').textContent = warn;
+    $('fight-feel').hidden = !!warn;
     scene.classList.toggle('shake', f.surge > 0);
     $('shadow').style.transform = `translateX(${Math.sin(f.t * 3) * 26}px) scale(${0.8 + f.diff * 0.25})`;
   }
@@ -555,7 +559,10 @@
     scene.style.setProperty('--sea1', cur.sea[0]);
     scene.style.setProperty('--sea2', cur.sea[1]);
     scene.classList.toggle('night', cur.id === 'deep');
-    const next = AREAS[cur.i + 1];
+    renderNote();
+  }
+  function renderNote() {
+    const cur = AREA[S.col.area], next = AREAS[cur.i + 1];
     let note = `${cur.name} journal: ${areaCaught(cur.id)} of ${areaTotal(cur.id)} species.`;
     if (next && !S.col.unlocked.includes(next.id)) note += ` ${next.name} needs ${next.need} of them and ${next.cost.toLocaleString()} coins.`;
     $('area-note').textContent = note;
