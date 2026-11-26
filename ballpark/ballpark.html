@@ -60,6 +60,8 @@ ol{padding:0;list-style:none}
 .cell{background:var(--board-2);border-radius:3px;text-align:center;padding:4px 0 5px;display:flex;flex-direction:column;gap:3px;min-width:0}
 .cell .inn{font:600 10px/1 var(--body);color:var(--board-dim);letter-spacing:.04em}
 .cell .val{font:800 21px/1 var(--display);height:21px;font-variant-numeric:tabular-nums}
+.cell .pt{font:600 13px/1 var(--display);height:13px;font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap}
+.cell.c-k .pt,.cell.c-f .pt,.cell.tot .pt{color:var(--board-dim)}
 .cell.cur{box-shadow:inset 0 0 0 2px var(--lamp)}
 .cell.c-hr .val,.cell.tot .val{color:var(--lamp)}
 .cell.c-k .val,.cell.c-f .val{color:var(--board-dim)}
@@ -597,8 +599,10 @@ let view='home', G=null;
 function board(o){
   const cells=[];
   for(let i=0;i<PER;i++){const c=o.hits[i];
-    cells.push(h('div',{class:'cell'+(i===o.cur?' cur':'')+(c?' c-'+c.toLowerCase():'')},h('span',{class:'inn',text:i+1}),h('span',{class:'val',text:c||''})))}
-  cells.push(h('div',{class:'cell tot'},h('span',{class:'inn',text:'PTS'}),h('span',{class:'val',text:o.total==null?'':nf(o.total)})));
+    const p=o.pts?o.pts[i]:null;
+    cells.push(h('div',{class:'cell'+(i===o.cur?' cur':'')+(c?' c-'+c.toLowerCase():'')},h('span',{class:'inn',text:i+1}),h('span',{class:'val',text:c||''}),
+      h('span',{class:'pt',text:c&&p!=null?String(p):''})))}
+  cells.push(h('div',{class:'cell tot'},h('span',{class:'inn',text:'PTS'}),h('span',{class:'val',text:o.total==null?'':nf(o.total)}),h('span',{class:'pt',text:'of '+nf(MAXPTS)})));
   return h('section',{class:'board','aria-label':'Line score'},
     h('div',{class:'bhead'},h('span',{text:o.left}),h('span',{text:o.right})),
     h('div',{class:'line'},cells));
@@ -641,7 +645,7 @@ function renderHome(){
   const hits=done?rec.hits:(rec?codes(rec.res):[]);
   const left=h('div',{class:'col'},
     h('header',{class:'mast'},h('h1',{class:'word',text:'Ballpark'}),h('p',{class:'tag',text:'Nine innings of educated guessing'})),
-    board({hits,total:done?rec.total:(rec&&rec.res.length?sum(rec.res):null),cur:-1,left:'Game No. '+(d+1),right:dateLabel()}),
+    board({hits,pts:rec?(rec.res&&rec.res.length?rec.res.map(r=>r.p):rec.pts):null,total:done?rec.total:(rec&&rec.res.length?sum(rec.res):null),cur:-1,left:'Game No. '+(d+1),right:dateLabel()}),
     done?homeDone(d,rec):homeIntro(rec),
     statsRow(),
     h('div',{class:'set'},h('span',{text:'Units'}),unitToggle()));
@@ -710,7 +714,7 @@ function ask(){
   const q=cur(), v=G.v=viewOf(q);
   app.replaceChildren(h('div',{class:'play'},
     h('div',{class:'topbar'},h('span',{class:'mini',text:'Ballpark'}),h('button',{class:'quit',onclick:quit,text:G.mode==='daily'?'Save and leave':'Leave'})),
-    board({hits:codes(G.res),total:G.res.length?sum(G.res):null,cur:G.i,left:G.mode==='daily'?'Game No. '+(G.day+1):'Practice',right:'Inning '+(G.i+1)+' of '+PER}),
+    board({hits:codes(G.res),pts:G.res.map(r=>r.p),total:G.res.length?sum(G.res):null,cur:G.i,left:G.mode==='daily'?'Game No. '+(G.day+1):'Practice',right:'Inning '+(G.i+1)+' of '+PER}),
     h('div',{class:'timer'},h('i',{id:'tbar'})),
     h('section',{class:'q'},
       h('div',{class:'qmeta'},h('span',{text:q.c}),h('span',{class:'sec',id:'tsec',text:'0:30'})),
@@ -780,7 +784,7 @@ function lockIn(timeout){
 }
 function reveal(r,q){
   const hit=hitOf(r.p), last=G.i>=PER-1;
-  const bd=board({hits:codes(G.res),total:sum(G.res),cur:-1,left:G.mode==='daily'?'Game No. '+(G.day+1):'Practice',right:'Inning '+(G.i+1)+' of '+PER});
+  const bd=board({hits:codes(G.res),pts:G.res.map(x=>x.p),total:sum(G.res),cur:-1,left:G.mode==='daily'?'Game No. '+(G.day+1):'Practice',right:'Inning '+(G.i+1)+' of '+PER});
   const old=$('.play .board');if(old)old.replaceWith(bd);
   const bar=$('#tbar');if(bar)bar.style.transform='scaleX(0)';
   const sec=$('#tsec');if(sec)sec.textContent='';
@@ -818,7 +822,7 @@ function finish(){
   const ids=G.ids, res=G.res;G=null;
   app.replaceChildren(h('div',{class:'col'},
     h('div',{class:'topbar'},h('span',{class:'mini',text:'Ballpark'}),h('button',{class:'quit',onclick:renderHome,text:'Home'})),
-    board({hits,total,cur:-1,left:'Practice',right:'Final'}),
+    board({hits,pts:res.map(r=>r.p),total,cur:-1,left:'Practice',right:'Final'}),
     h('div',{class:'stack'},finalBlock(total),
       h('div',{class:'row'},h('button',{class:'btn primary small',onclick:startPractice,text:'Play another'}),shareButton(shareText('Ballpark practice',total,hits)))),
     inningList(ids,res),
@@ -890,7 +894,8 @@ function onRows(){
   const m=myRow(), d=today();
   // Finished today's game on another device: lock it here too.
   if(m&&m.days&&m.days[d]&&!(S.days[d]&&S.days[d].done)&&!(G&&G.mode==='daily')){
-    S.days[d]={done:true,remote:true,total:Number(m.days[d].s)||0,hits:String(m.days[d].h||'').split(' ').filter(Boolean).slice(0,PER),ids:[],res:[]};
+    S.days[d]={done:true,remote:true,total:Number(m.days[d].s)||0,hits:String(m.days[d].h||'').split(' ').filter(Boolean).slice(0,PER),
+      pts:Array.isArray(m.days[d].p)?m.days[d].p.slice(0,PER).map(n=>Number(n)||0):null,ids:[],res:[]};
     save();if(view==='home')return renderHome();
   }
   if(view==='home'){const st=$('#stats');if(st)st.replaceWith(statsRow())}
@@ -907,7 +912,7 @@ function postScores(){
     Object.keys(S.days).map(Number).sort((a,b)=>a-b).forEach(d=>{
       const rec=S.days[d];
       if(!rec.done||rec.remote||c.days[d]||d<=pruned)return;
-      c.days[d]={s:rec.total,h:rec.hits.join(' ')};
+      c.days[d]={s:rec.total,h:rec.hits.join(' '),p:rec.res.map(r=>r.p)};
       c.games=(Number(c.games)||0)+1;c.sum=(Number(c.sum)||0)+rec.total;c.best=Math.max(Number(c.best)||0,rec.total);
       const last=c.last==null?-1:Number(c.last);
       if(d>last){c.streak=last===d-1?(Number(c.streak)||0)+1:1;c.last=d}
