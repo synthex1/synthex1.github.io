@@ -24,6 +24,13 @@ body {
   font: 16px/1.45 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+/* Nothing in the game chrome needs selecting, and a long press on a phone
+   (hold to reel) must not bring up text selection or the callout menu. */
+.app, .modal, .toast {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+#guess-input { -webkit-user-select: text; user-select: text; }
 .app {
   max-width: 720px; margin: 0 auto; padding-block: 12px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -175,7 +182,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .scene.shake { animation: shake .12s linear infinite; }
 @keyframes shake { 25% { transform: translate(2px, -1px); } 75% { transform: translate(-2px, 1px); } }
 
-.fight { margin-top: 12px; }
+/* The bars sit inside the scene so nothing below it moves when a fight starts:
+   the reel button has to stay under the player's thumb. */
+#fight { position: absolute; left: 10px; right: 10px; top: 10px; padding: 2px 10px 10px; border-radius: 12px; background: rgba(7, 26, 43, .78); }
+#fight .bar-label { color: #c6dbe7; margin-top: 7px; }
+.scene.fight .sun, .scene.fight .alert { display: none; }
 .bar-label { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin: 8px 2px 4px; }
 .progress { height: 12px; background: var(--panel); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
 #prog { height: 100%; width: 30%; background: linear-gradient(90deg, #2aa568, #7fe0a4); border-radius: 999px; }

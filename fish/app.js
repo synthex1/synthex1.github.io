@@ -507,7 +507,16 @@
   function release() { holding = false; actBtn.classList.remove('down'); }
   [actBtn, scene].forEach(el => el.addEventListener('pointerdown', e => { e.preventDefault(); press(); }));
   ['pointerup', 'pointercancel', 'blur'].forEach(ev => window.addEventListener(ev, release));
-  actBtn.addEventListener('contextmenu', e => e.preventDefault());
+  // Phones treat a long press as "select text" or "open the context menu".
+  // Cancelling the touch itself stops that; pointer events still fire.
+  actBtn.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  // Once a fish is biting, the whole fishing view is the button: a thumb that
+  // drifts off it still reels, and a long press anywhere here selects nothing.
+  const fishView = $('view-fish');
+  fishView.addEventListener('pointerdown', e => { if (fs.phase === 'bite' || fs.phase === 'fight') { e.preventDefault(); press(); } });
+  fishView.addEventListener('touchstart', e => { if (fs.phase !== 'idle') e.preventDefault(); }, { passive: false });
+  fishView.addEventListener('contextmenu', e => { if (fs.phase !== 'idle' || e.target.closest('#btn-act, #scene')) e.preventDefault(); });
+  document.addEventListener('selectstart', e => { if (currentTab === 'fish' && !e.target.closest?.('input')) e.preventDefault(); });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeModal(); return; }
     if (currentTab !== 'fish' || (e.key !== ' ' && e.key !== 'Enter')) return;
@@ -528,6 +537,7 @@
     b.setAttribute('aria-pressed', S.col.useBait && S.col.bait > 0);
   }
   $('btn-bait').addEventListener('click', () => {
+    if (fs.phase !== 'idle') return;
     S.col.useBait = !S.col.useBait; save(); renderWallet();
     toast(S.col.useBait ? 'Lucky bait on: your next hooked fish is far more likely to be rare' : 'Lucky bait off');
   });
@@ -555,6 +565,7 @@
     const b = e.target.closest('button[data-area]');
     if (!b) return;
     const a = AREA[b.dataset.area];
+    if (fs.phase !== 'idle') return; // not mid-cast
     if (S.col.unlocked.includes(a.id)) {
       if (a.id === S.col.area) return;
       S.col.area = a.id; save();
