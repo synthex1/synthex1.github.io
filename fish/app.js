@@ -242,7 +242,9 @@
     const d = dayState(), a = BY_ID[d.a];
     const sq = { hit: '🟩', near: '🟨', miss: '⬛' };
     const grid = d.g.map(id => compare(BY_ID[id], a).map(c => sq[c.s]).join('')).join('\n');
-    return `Fathom #${today} 🎣 ${d.won ? d.g.length : 'X'}/${MAX_GUESSES}\n${grid}\n${location.origin}${location.pathname}`;
+    // only append a link when the page is on its public home, not a preview or embed
+    const link = location.hostname.endsWith('github.io') ? '\n' + location.origin + location.pathname : '';
+    return `Fathom #${today} 🎣 ${d.won ? d.g.length : 'X'}/${MAX_GUESSES}\n${grid}${link}`;
   }
   function share() {
     const text = shareText();
