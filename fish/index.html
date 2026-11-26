@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fathom — a daily fish guessing game</title>
+<meta name="description" content="Guess the mystery fish in six tries, then go fishing to fill your journal and unlock new waters.">
+<meta name="theme-color" content="#071a2b">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23071a2b'/%3E%3Cpath d='M10 32c8-12 22-14 32-6l12-8v28l-12-8c-10 8-24 6-32-6z' fill='%233fd0c9'/%3E%3Ccircle cx='22' cy='29' r='3' fill='%23071a2b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 64 40" aria-hidden="true"><path d="M2 20c9-14 26-17 38-7l14-9v32l-14-9c-12 10-29 7-38-7z" fill="currentColor"/><circle cx="17" cy="17" r="3.2" fill="#071a2b"/></svg>
+      <h1>Fathom</h1>
+    </div>
+    <div class="top-actions">
+      <button id="btn-stats" class="icon-btn" aria-label="Statistics" title="Statistics">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z" fill="currentColor"/></svg>
+      </button>
+      <button id="btn-help" class="icon-btn" aria-label="How to play" title="How to play">?</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="daily" aria-selected="true">Daily Catch</button>
+    <button role="tab" data-tab="fish" aria-selected="false">Free Fishing</button>
+    <button role="tab" data-tab="journal" aria-selected="false">Journal</button>
+  </nav>
+
+  <main>
+    <!-- Daily -->
+    <section id="view-daily" class="view">
+      <div class="daily-head">
+        <div>
+          <h2 id="daily-title">Daily Catch</h2>
+          <p id="daily-sub" class="muted"></p>
+        </div>
+        <div id="pips" class="pips" aria-label="Guesses used"></div>
+      </div>
+
+      <div id="guess-box" class="guess-box">
+        <input id="guess-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="Type a fish, or tap to browse…" aria-label="Guess a fish" aria-controls="guess-list">
+        <ul id="guess-list" class="guess-list" role="listbox" hidden></ul>
+      </div>
+
+      <div id="hints" class="hints"></div>
+      <div id="result" class="result" hidden></div>
+      <div id="rows" class="rows" aria-live="polite"></div>
+      <p id="daily-empty" class="empty">A mystery fish is on the line. Guess any species and the clues will tell you how close you are.</p>
+    </section>
+
+    <!-- Free fishing -->
+    <section id="view-fish" class="view" hidden>
+      <div class="fish-top">
+        <div class="wallet">
+          <span class="chip"><i class="coin"></i><b id="coins">0</b></span>
+          <button id="btn-bait" class="chip chip-btn" title="Lucky bait makes rare fish far more likely on your next cast">Lucky bait <b id="bait">0</b></button>
+        </div>
+        <button id="btn-shop" class="btn small">Tackle shop</button>
+      </div>
+
+      <div id="areas" class="areas" role="tablist" aria-label="Fishing areas"></div>
+
+      <div id="scene" class="scene">
+        <div class="sun"></div>
+        <svg class="rodline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path id="rod" d="M-2,34 L20,6" /><path id="line" d="M20,6 Q50,10 62,52" />
+        </svg>
+        <div class="water">
+          <svg class="waves" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0,20 Q50,4 100,20 T200,20 T300,20 T400,20 T500,20 T600,20 T700,20 T800,20 T900,20 T1000,20 T1100,20 T1200,20 V40 H0 Z"/>
+          </svg>
+          <div id="shadow" class="shadow"></div>
+        </div>
+        <div id="bobber" class="bobber"><i></i></div>
+        <div id="alert" class="alert" hidden>!</div>
+        <div id="status" class="status">Cast your line.</div>
+      </div>
+
+      <div id="fight" class="fight" hidden>
+        <div class="bar-label"><span>Line in</span><span id="fight-feel"></span></div>
+        <div class="progress"><div id="prog"></div></div>
+        <div class="bar-label"><span>Tension</span><span id="strain-txt"></span></div>
+        <div id="tension" class="tension">
+          <div id="zone" class="zone"></div>
+          <div id="needle" class="needle"></div>
+        </div>
+      </div>
+
+      <button id="btn-act" class="btn big">Cast</button>
+      <p id="area-note" class="muted center"></p>
+    </section>
+
+    <!-- Journal -->
+    <section id="view-journal" class="view" hidden>
+      <div id="journal"></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Sizes are approximate maximum records. A new Daily Catch arrives at midnight, your time.
+  </footer>
+</div>
+
+<div id="modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <button id="modal-close" class="icon-btn modal-close" aria-label="Close">×</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="art.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
