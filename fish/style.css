@@ -98,6 +98,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .guess-list li.active, .guess-list li:hover { background: var(--panel2); }
 .guess-list li small { color: var(--accent); font-size: 12px; white-space: nowrap; }
 .guess-list li.none { color: var(--muted); cursor: default; background: none; }
+.guess-list li.list-head {
+  position: sticky; top: -6px; z-index: 1; margin: -6px -6px 4px; padding: 6px 6px 6px 18px; border-radius: 0;
+  background: var(--panel); border-bottom: 1px solid var(--line); cursor: default; align-items: center;
+  color: var(--muted); font-size: 13px;
+}
+.guess-list li.list-head:hover { background: var(--panel); }
+#list-close { border: 0; background: var(--panel2); color: var(--ink); font-weight: 700; font-size: 13px; border-radius: 8px; padding: 7px 14px; }
 
 .hints { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
 .hint { background: var(--panel); border: 1px dashed var(--line); border-radius: 12px; padding: 10px 12px; font-size: 13px; color: var(--muted); min-height: 62px; }

@@ -457,25 +457,36 @@
     const d = dayState(), q = input.value.trim().toLowerCase();
     matches = SORTED.filter(f => !d.g.includes(f.id) && (!q || f.name.toLowerCase().includes(q) || f.sci.toLowerCase().includes(q)));
     active = clamp(active, 0, Math.max(0, matches.length - 1));
-    list.innerHTML = matches.length
+    list.innerHTML = `<li class="list-head" role="presentation"><span>${matches.length} fish</span><button type="button" id="list-close">Close</button></li>` + (matches.length
       ? matches.map((f, i) => `<li role="option" data-id="${f.id}" class="${i === active ? 'active' : ''}"><span>${esc(f.name)}</span>${S.col.caught[f.id] ? '<small>in journal</small>' : ''}</li>`).join('')
-      : '<li class="none">No fish by that name</li>';
+      : '<li class="none">No fish by that name</li>');
     list.hidden = false;
-    const el = list.querySelector('.active');
-    if (el) el.scrollIntoView({ block: 'nearest' });
+    // keep the highlighted row in view by scrolling the list only, never the page
+    const el = list.querySelector('.active'), head = list.querySelector('.list-head');
+    if (el) {
+      const top = el.offsetTop - head.offsetHeight, bottom = el.offsetTop + el.offsetHeight;
+      if (top < list.scrollTop) list.scrollTop = top;
+      else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    }
   }
   function hideList() { list.hidden = true; }
+  function dismissList() { hideList(); input.blur(); }
   input.addEventListener('focus', () => { active = 0; showList(); });
+  // a phone keeps the box focused after the list is closed, so a tap must reopen it
+  input.addEventListener('click', () => { if (list.hidden) { active = 0; showList(); } });
+  // phones do not take focus away when you tap empty space, so close on any tap outside
+  document.addEventListener('pointerdown', e => { if (!list.hidden && !e.target.closest('#guess-box')) dismissList(); });
   input.addEventListener('input', () => { active = 0; showList(); });
   input.addEventListener('blur', () => setTimeout(hideList, 120));
   input.addEventListener('keydown', e => {
     if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) showList(); else { active = Math.min(matches.length - 1, active + 1); showList(); } }
     else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active - 1); showList(); }
     else if (e.key === 'Enter') { e.preventDefault(); if (!list.hidden && matches[active]) submitGuess(matches[active].id); }
-    else if (e.key === 'Escape') { hideList(); }
+    else if (e.key === 'Escape') { e.stopPropagation(); hideList(); }
   });
   list.addEventListener('mousedown', e => e.preventDefault()); // keep focus so the click lands
   list.addEventListener('click', e => {
+    if (e.target.closest('#list-close')) { dismissList(); return; }
     const li = e.target.closest('li[data-id]');
     if (li) { submitGuess(li.dataset.id); input.blur(); }
   });
