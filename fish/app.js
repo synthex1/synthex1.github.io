@@ -2,7 +2,8 @@
    derived from the date, and progress is saved as described under "state". */
 (function () {
   'use strict';
-  const { AREAS, REGIONS, DIETS, RARITY, FISH } = window.FATHOM_DATA;
+  const { AREAS, REGIONS, DIETS, RARITY, FISH, ORIGINAL_COUNT } = window.FATHOM_DATA;
+  const { DECOR, TANKS } = window.FathomScene;
   const BY_ID = {}, AREA = {};
   FISH.forEach(f => { BY_ID[f.id] = f; });
   AREAS.forEach((a, i) => { a.i = i; AREA[a.id] = a; });
@@ -32,7 +33,9 @@
     return {
       v: 1, t: 0, base: null, pending: null, rev: '', seenHelp: false,
       daily: { days: {}, stats: { played: 0, wins: 0, streak: 0, best: 0, lastWin: 0, dist: [0, 0, 0, 0, 0, 0] } },
-      col: { coins: 0, bait: 0, useBait: false, caught: {}, seen: {}, unlocked: ['pond'], area: 'pond', gear: { rod: 0, reel: 0, line: 0, lure: 0 } }
+      col: { coins: 0, bait: 0, useBait: false, caught: {}, seen: {}, unlocked: ['pond'], area: 'pond', gear: { rod: 0, reel: 0, line: 0, lure: 0 } },
+      tank: { size: 0, fish: [], decor: {}, set: false },
+      bounty: { day: 0, id: '', done: false }
     };
   }
   const num = (v, d, lo, hi) => { v = Number(v); return Number.isFinite(v) ? clamp(v, lo, hi) : d; };
@@ -58,11 +61,17 @@
     o.col.bait = int(c.bait, 0, 0, 1e6);
     o.col.useBait = !!c.useBait;
     const caught = obj(c.caught), seen = obj(c.seen), unlocked = Array.isArray(c.unlocked) ? c.unlocked : [];
-    for (const id of Object.keys(caught)) if (BY_ID[id] && caught[id]) o.col.caught[id] = { n: int(caught[id].n, 1, 1, 1e9), best: num(caught[id].best, 0.3, 0, 1) };
+    for (const id of Object.keys(caught)) if (BY_ID[id] && caught[id]) o.col.caught[id] = { n: int(caught[id].n, 1, 1, 1e9), best: num(caught[id].best, 0.3, 0, 1), g: int(caught[id].g, 0, 0, 1e9) };
     for (const id of Object.keys(seen)) if (BY_ID[id] && seen[id]) o.col.seen[id] = true;
     o.col.unlocked = AREAS.filter(x => x.id === 'pond' || unlocked.includes(x.id)).map(x => x.id);
     GEAR.forEach(g => { o.col.gear[g.id] = int(obj(c.gear)[g.id], 0, 0, GEAR_COST.length); });
     o.col.area = AREA[c.area] && o.col.unlocked.includes(c.area) ? c.area : 'pond';
+    const tk = obj(raw.tank), dc = obj(tk.decor), bo = obj(raw.bounty);
+    o.tank.size = int(tk.size, 0, 0, TANKS.length - 1);
+    o.tank.fish = (Array.isArray(tk.fish) ? tk.fish : []).filter((id, n, arr) => typeof id === 'string' && BY_ID[id] && arr.indexOf(id) === n).slice(0, 40);
+    DECOR.forEach(x => { if (x.id in dc) o.tank.decor[x.id] = dc[x.id] ? 1 : 0; });
+    o.tank.set = !!tk.set;
+    if (BY_ID[bo.id]) o.bounty = { day: int(bo.day, 0, 0, 1e7), id: bo.id, done: !!bo.done };
     if (raw.base && typeof raw.base === 'object') o.base = { coins: int(raw.base.coins, 0, 0, 1e12), bait: int(raw.base.bait, 0, 0, 1e6) };
     const pd = raw.pending;
     if (pd && typeof pd === 'object' && typeof pd.rev === 'string') o.pending = { rev: pd.rev.slice(0, 40), coins: int(pd.coins, 0, 0, 1e12), bait: int(pd.bait, 0, 0, 1e6) };
@@ -98,7 +107,7 @@
       }
       for (const id of Object.keys(src.col.caught)) {
         const e = src.col.caught[id], cur = c.caught[id];
-        c.caught[id] = cur ? { n: Math.max(cur.n, e.n), best: Math.max(cur.best, e.best) } : { n: e.n, best: e.best };
+        c.caught[id] = cur ? { n: Math.max(cur.n, e.n), best: Math.max(cur.best, e.best), g: Math.max(cur.g || 0, e.g || 0) } : { n: e.n, best: e.best, g: e.g || 0 };
       }
       Object.assign(c.seen, src.col.seen);
     }
@@ -112,6 +121,12 @@
     c.useBait = L.col.useBait && c.bait > 0;
     // a device that has never synced opens where the account had got to
     c.area = !keepArea && !L.base && AREA[R.col.area].i > AREA[L.col.area].i ? R.col.area : L.col.area;
+    // aquarium: everything bought on either side is kept; the layout is this device's
+    M.tank.size = Math.max(L.tank.size, R.tank.size);
+    DECOR.forEach(x => { if (x.id in L.tank.decor) M.tank.decor[x.id] = L.tank.decor[x.id]; else if (x.id in R.tank.decor) M.tank.decor[x.id] = R.tank.decor[x.id]; });
+    M.tank.fish = (L.tank.fish.length || L.tank.set ? L.tank.fish : R.tank.fish).filter(id => c.caught[id]);
+    M.tank.set = L.tank.set || R.tank.set;
+    M.bounty = R.bounty.day > L.bounty.day ? R.bounty : L.bounty.day > R.bounty.day ? L.bounty : { day: L.bounty.day, id: L.bounty.id, done: L.bounty.done || R.bounty.done };
     M.base = fromBackup ? L.base : { coins: R.col.coins, bait: R.col.bait };
     return M;
   }
@@ -119,7 +134,9 @@
   /* --- the account copy --- */
   const SLOT_KEY = 'fathom.slot';
   let cloudRef = null, cloudDb = null, cloudKind = 'local', cloudOn = false, canName = false, slot = '', cloudBusy = false, cloudDirty = false, pushTimer = null, pushQueued = false, lastPull = 0;
-  const cloudBody = () => JSON.parse(JSON.stringify({ v: 1, t: S.t, seenHelp: S.seenHelp, daily: S.daily, col: S.col }));
+  const bodyOf = X => ({ v: 1, t: X.t, seenHelp: X.seenHelp, daily: X.daily, col: X.col, tank: X.tank, bounty: X.bounty });
+  const cloudBody = () => JSON.parse(JSON.stringify(bodyOf(S)));
+  function applyMerged(M) { S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col; S.tank = M.tank; S.bounty = M.bounty; }
   const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => { o[key] = x[key]; return o; }, {}) : x));
   const within = (p, ms) => Promise.race([p, new Promise((res, rej) => setTimeout(() => rej({ code: 'unavailable' }), ms))]);
   /* kind: 'account' (the player's private save), 'named' (a save the player
@@ -182,12 +199,12 @@
         S.pending = null;
         const before = canon(cloudBody());
         const M = mergeStates(S, R, fs.phase !== 'idle');
-        S.t = M.t; S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col;
+        S.t = M.t; applyMerged(M);
         saveLocal();
         setCloud(cloudKind);
         const after = canon(cloudBody());
         if (after !== before) refreshView();
-        needPush = after !== canon({ v: 1, t: R.t, seenHelp: R.seenHelp, daily: R.daily, col: R.col });
+        needPush = after !== canon(bodyOf(R));
       }
     } catch (e) { /* could not reach it this time; the browser copy carries on */ }
     cloudBusy = false;
@@ -234,7 +251,7 @@
     try { const m = /FATHOM1\.([A-Za-z0-9_-]+)/.exec(String(code).replace(/\s+/g, '')); R = m && adopt(JSON.parse(b64.dec(m[1]))); } catch (e) { R = null; }
     if (!R) return false;
     const M = mergeStates(S, R, fs.phase !== 'idle', true);
-    S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col;
+    applyMerged(M);
     save();
     refreshView();
     return true;
@@ -296,14 +313,17 @@
     return Math.round((t - EPOCH) / 864e5) + 1;
   }
   function answerFor(n) {
-    const N = FISH.length, pos = (((n - 1) % N) + N) % N, cycle = Math.floor((n - 1) / N);
+    // Days 1-91 run through the original species in their original order, so
+    // adding species later never changes a puzzle that is already scheduled.
+    const first = n >= 1 && n <= ORIGINAL_COUNT, pool = first ? FISH.slice(0, ORIGINAL_COUNT) : FISH, N = pool.length;
+    const m = first ? n : n - ORIGINAL_COUNT, pos = (((m - 1) % N) + N) % N, cycle = first ? 0 : 1 + Math.floor((m - 1) / N);
     const rand = window.FishArt.rng(0xF47 + cycle * 7919);
-    const order = FISH.map((_, i) => i);
-    for (let i = N - 1; i > 0; i--) {
-      const j = Math.floor(rand() * (i + 1));
-      const tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+    const order = pool.map((_, k) => k);
+    for (let k = N - 1; k > 0; k--) {
+      const r = Math.floor(rand() * (k + 1));
+      const tmp = order[k]; order[k] = order[r]; order[r] = tmp;
     }
-    return FISH[order[pos]].id;
+    return pool[order[pos]].id;
   }
   let today = dayNum();
   function dayState() {
@@ -370,7 +390,7 @@
   }
 
   function renderResult(d, a) {
-    const reward = d.reward ? `<p class="reward">+${d.reward.coins} coins and +${d.reward.bait} lucky bait for Free Fishing</p>` : '';
+    const reward = d.reward ? `<p class="reward">+${d.reward.coins} coins and +${d.reward.bait} lucky bait for Fishing</p>` : '';
     $('result').innerHTML =
       `<p class="muted">${d.won ? `Landed in ${d.g.length} of ${MAX_GUESSES}` : 'It got away. The fish was…'}</p>` +
       window.FishArt.svg(a) +
@@ -392,7 +412,7 @@
     el.textContent = `${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
   }
   setInterval(() => {
-    if (dayNum() !== today) { today = dayNum(); renderDaily(); }
+    if (dayNum() !== today) { today = dayNum(); refreshView(); }
     tickCountdown();
   }, 1000);
 
@@ -505,8 +525,11 @@
        <h3>The clues</h3>
        <p><b>Habitat</b> is where you would catch it. <b>Family</b> is its broad group. <b>Range</b> lists the continents (for freshwater) or oceans it is native to. <b>Length</b> and <b>Weight</b> are rough record sizes.</p>
        <p>A field note unlocks after 3 guesses and a silhouette after 5.</p>
-       <h3>Free Fishing</h3>
+       <h3>Fishing</h3>
        <p>No timer, no daily limit. Cast, hook the bite, then <b>hold to reel</b> and keep the marker in the green zone. Fill your journal to unlock new waters, and spend coins on better tackle. Finishing the Daily Catch earns coins and lucky bait.</p>
+       <p>Bigger catches earn bronze, silver and gold <b>medals</b>, about one catch in thirty is a <b>golden</b> fish worth five times the coins, and each day there is a <b>bounty</b> on one fish.</p>
+       <h3>Aquarium</h3>
+       <p>The fish you catch can live in your tank. Tap the water to feed them, and spend coins on a bigger tank and decorations.</p>
        <button class="btn" id="help-ok" style="width:100%;margin-top:8px">Let's fish</button>`,
       () => { S.seenHelp = true; save(); });
     $('help-ok').addEventListener('click', closeModal);
@@ -579,10 +602,38 @@
 
   function areaCaught(areaId) { return FISH.filter(f => f.area === areaId && S.col.caught[f.id]).length; }
   function areaTotal(areaId) { return FISH.filter(f => f.area === areaId).length; }
+  /* Ordinary areas open from the one before; expeditions open from the size of the whole journal. */
   function unlockInfo(a) {
-    const prev = AREAS[a.i - 1];
-    const have = prev ? areaCaught(prev.id) : 0;
-    return { prev, have, speciesOk: have >= a.need, coinsOk: S.col.coins >= a.cost, ok: have >= a.need && S.col.coins >= a.cost };
+    const coinsOk = S.col.coins >= a.cost;
+    if (a.needTotal) {
+      const have = Object.keys(S.col.caught).filter(id => BY_ID[id]).length, speciesOk = have >= a.needTotal;
+      return { prev: null, prevOpen: true, need: a.needTotal, have, speciesOk, coinsOk, ok: speciesOk && coinsOk };
+    }
+    const prev = AREAS[a.i - 1], have = prev ? areaCaught(prev.id) : 0, speciesOk = have >= a.need;
+    const prevOpen = !prev || S.col.unlocked.includes(prev.id);
+    return { prev, prevOpen, need: a.need, have, speciesOk, coinsOk, ok: speciesOk && coinsOk && prevOpen };
+  }
+
+  /* --- medals, golden fish, bounties --- */
+  const MEDALS = [['gold', 0.9, 'Gold'], ['silver', 0.75, 'Silver'], ['bronze', 0.55, 'Bronze']];
+  const medalOf = best => { const m = MEDALS.find(x => best >= x[1]); return m ? { id: m[0], at: m[1], name: m[2] } : null; };
+  const goldenChance = useBait => (1 / 30) * (1 + 0.1 * S.col.gear.lure) * (useBait ? 3 : 1);
+  const BOUNTY_FRAC = 0.5;
+  const bountyReward = f => Math.round(120 * Math.pow(AREA[f.area].mult, 0.8) / 10) * 10;
+  function ensureBounty() {
+    if (S.bounty.day === today && BY_ID[S.bounty.id]) return S.bounty;
+    const pool = FISH.filter(f => S.col.unlocked.includes(f.area) && (f.rarity === 'common' || f.rarity === 'uncommon'));
+    const rand = window.FishArt.rng((today * 7919 + 13) >>> 0);
+    S.bounty = { day: today, id: pool[Math.floor(rand() * pool.length)].id, done: false };
+    saveLocal();
+    return S.bounty;
+  }
+  function renderBounty() {
+    const b = ensureBounty(), f = BY_ID[b.id], el = $('bounty');
+    el.className = 'bounty' + (b.done ? ' done' : '');
+    el.innerHTML = window.FishArt.svg(f) +
+      `<span class="bt"><b>${b.done ? 'Bounty landed' : 'Today\'s bounty'}</b><span>${b.done ? `${esc(f.name)} is in. A new bounty arrives tomorrow.` : `${esc(f.name)}, ${fmtCatchLen(f.len * BOUNTY_FRAC)} or longer · ${AREA[f.area].name}`}</span></span>` +
+      (b.done ? '<em class="tick">✓</em>' : `<em><i class="coin"></i>${bountyReward(f)}</em>`);
   }
 
   function pickFish(areaId, useBait, rand) {
@@ -596,7 +647,8 @@
     if (useBait) { tier.common *= 0.2; tier.uncommon *= 0.8; tier.rare *= 3; tier.legendary *= 4; }
     const count = {};
     pool.forEach(f => { count[f.rarity] = (count[f.rarity] || 0) + 1; });
-    const w = pool.map(f => tier[f.rarity] / count[f.rarity] * (S.col.caught[f.id] ? 1 : 1.6));
+    const wanted = S.bounty.day === today && !S.bounty.done ? S.bounty.id : '';
+    const w = pool.map(f => tier[f.rarity] / count[f.rarity] * (S.col.caught[f.id] ? 1 : 1.6) * (f.id === wanted ? 3 : 1));
     let r = (rand || Math.random)() * w.reduce((x, y) => x + y, 0);
     for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return pool[i]; }
     return pool[pool.length - 1];
@@ -680,10 +732,11 @@
     const fish = pickFish(S.col.area, useBait);
     if (useBait) { S.col.bait--; if (!S.col.bait) S.col.useBait = false; save(); renderWallet(); }
     fs.fish = fish;
-    fx.hook(fish);
+    fs.golden = Math.random() < goldenChance(useBait);
+    fx.hook(fish, fs.golden);
     fs.f = fightInit(fish, S.col.gear, Math.random);
     fs.last = performance.now();
-    const feel = { common: 'A light tug', uncommon: 'A solid pull', rare: 'Something strong!', legendary: 'A monster on the line!' }[fish.rarity];
+    const feel = fs.golden ? 'Something glints below!' : { common: 'A light tug', uncommon: 'A solid pull', rare: 'Something strong!', legendary: 'A monster on the line!' }[fish.rarity];
     $('fight-feel').textContent = feel;
     setPhase('fight');
     $('area-note').textContent = 'Keep the marker in the green. Too far right snaps the line, too far left lets the fish go.';
@@ -712,7 +765,7 @@
     if (!out) { raf = requestAnimationFrame(loop); return; }
     if (out === 'caught') {
       // The catch is saved straight away; the leap is only for show.
-      pendingCatch = recordCatch(fs.fish);
+      pendingCatch = recordCatch(fs.fish, fs.golden);
       holding = false; actBtn.classList.remove('down');
       setPhase('land', 'Got it!');
       fx.caught(finishLanding);
@@ -731,26 +784,33 @@
     showCatch(c);
   }
 
-  function recordCatch(fish) {
+  function recordCatch(fish, golden) {
     const frac = 0.3 + 0.7 * Math.pow(Math.random(), 2.2);
     const area = AREA[fish.area], rec = S.col.caught[fish.id];
-    const isNew = !rec, isRecord = !!rec && frac > rec.best;
+    const isNew = !rec, isRecord = !!rec && frac > rec.best, before = rec ? medalOf(rec.best) : null;
     let coins = Math.round(RARITY[fish.rarity].coins * area.mult * (0.6 + 0.8 * frac));
     if (isNew) coins *= 2;
-    S.col.caught[fish.id] = { n: (rec ? rec.n : 0) + 1, best: rec ? Math.max(rec.best, frac) : frac };
+    if (golden) coins *= 5;
+    const entry = S.col.caught[fish.id] = { n: (rec ? rec.n : 0) + 1, best: rec ? Math.max(rec.best, frac) : frac, g: (rec ? rec.g || 0 : 0) + (golden ? 1 : 0) };
+    const medal = medalOf(entry.best), newMedal = medal && (!before || before.id !== medal.id) ? medal : null;
+    let bounty = 0;
+    const b = S.bounty;
+    if (b.day === today && !b.done && b.id === fish.id && frac >= BOUNTY_FRAC) { b.done = true; bounty = bountyReward(fish); S.col.coins += bounty; S.col.bait += 1; }
     S.col.coins += coins;
     save();
-    return { fish, frac, coins, isNew, isRecord };
+    return { fish, frac, coins, isNew, isRecord, golden: !!golden, firstGolden: !!golden && !(rec && rec.g), newMedal, bounty };
   }
   function showCatch(c) {
-    const { fish, frac, coins, isNew, isRecord } = c;
-    const badges = (isNew ? '<span class="badge">New species · double coins</span>' : '') +
-      (isRecord ? '<span class="badge">Personal best</span>' : '') +
-      (frac >= 0.9 ? '<span class="badge">Trophy size</span>' : '');
+    const { fish, frac, coins, isNew, isRecord, golden, newMedal, bounty } = c;
+    const badges = (golden ? '<span class="badge gold">Golden · 5× coins</span>' : '') +
+      (isNew ? '<span class="badge">New species · double coins</span>' : '') +
+      (newMedal ? `<span class="badge m-${newMedal.id}">${newMedal.name} medal</span>` : '') +
+      (isRecord && !newMedal ? '<span class="badge">Personal best</span>' : '') +
+      (bounty ? `<span class="badge">Bounty complete · +${bounty} coins, +1 bait</span>` : '');
     openModal(
       `<div class="catch">${badges ? `<div>${badges}</div>` : ''}
-        ${window.FishArt.svg(fish)}
-        <h2 style="padding:0">${esc(fish.name)}</h2>
+        ${window.FishArt.svg(fish, { golden })}
+        <h2 style="padding:0">${golden ? 'Golden ' : ''}${esc(fish.name)}</h2>
         <p class="muted"><i>${esc(fish.sci)}</i> · <span class="rar r-${fish.rarity}">${RARITY[fish.rarity].name}</span></p>
         <p class="size">${fmtCatchLen(fish.len * frac)} · ${fmtCatchKg(fish.kg * Math.pow(frac, 3))}</p>
         <p><i class="coin"></i> +${coins} coins</p>
@@ -816,25 +876,27 @@
     const cur = AREA[S.col.area];
     $('areas').innerHTML = AREAS.map(a => {
       const open = S.col.unlocked.includes(a.id);
-      const ready = !open && S.col.unlocked.includes((AREAS[a.i - 1] || {}).id) && unlockInfo(a).ok;
+      const ready = !open && unlockInfo(a).ok;
       return `<button data-area="${a.id}" class="${a.id === cur.id ? 'on' : ''}${open ? '' : ' locked'}${ready ? ' ready' : ''}">${open ? '' : '🔒 '}${a.name}</button>`;
     }).join('');
     scene.style.setProperty('--sky1', cur.sky[0]);
     scene.style.setProperty('--sky2', cur.sky[1]);
     scene.style.setProperty('--sea1', cur.sea[0]);
     scene.style.setProperty('--sea2', cur.sea[1]);
-    scene.classList.toggle('night', cur.id === 'deep');
+    scene.classList.toggle('night', cur.id === 'deep' || cur.id === 'polar');
     if (sceneArea !== cur.id) {
       sceneArea = cur.id;
       $('backdrop').innerHTML = window.FathomScene.backdrop(cur.id);
       fx.setArea(cur.id);
     }
+    renderBounty();
     renderNote();
   }
   function renderNote() {
-    const cur = AREA[S.col.area], next = AREAS[cur.i + 1];
+    const cur = AREA[S.col.area], next = AREAS.find(x => x.i > cur.i && !S.col.unlocked.includes(x.id));
     let note = `${cur.name} journal: ${areaCaught(cur.id)} of ${areaTotal(cur.id)} species.`;
-    if (next && !S.col.unlocked.includes(next.id)) note += ` ${next.name} needs ${next.need} of them and ${next.cost.toLocaleString()} coins.`;
+    if (next && next.needTotal) note += ` ${next.name} needs ${next.needTotal} species in your journal and ${next.cost.toLocaleString()} coins.`;
+    else if (next && next.i === cur.i + 1) note += ` ${next.name} needs ${next.need} of them and ${next.cost.toLocaleString()} coins.`;
     $('area-note').textContent = note;
   }
 
@@ -852,15 +914,15 @@
   });
 
   function showUnlock(a) {
-    const u = unlockInfo(a), prevOpen = S.col.unlocked.includes(u.prev.id);
+    const u = unlockInfo(a), got = `(${Math.min(u.have, u.need)}/${u.need})`;
     openModal(
       `<h2>${a.name}</h2><p>${esc(a.blurb)}</p>
        <ul class="req">
-         <li class="${u.speciesOk ? 'ok' : 'no'}">${u.speciesOk ? '✓' : '○'} Catch ${a.need} different species in the ${u.prev.name} (${Math.min(u.have, a.need)}/${a.need})</li>
+         <li class="${u.speciesOk ? 'ok' : 'no'}">${u.speciesOk ? '✓' : '○'} ${a.needTotal ? `Catch ${u.need} different species in total ${got}` : `Catch ${u.need} different species in the ${u.prev.name} ${got}`}</li>
          <li class="${u.coinsOk ? 'ok' : 'no'}">${u.coinsOk ? '✓' : '○'} ${a.cost.toLocaleString()} coins for the licence (you have ${S.col.coins.toLocaleString()})</li>
        </ul>
-       ${prevOpen ? '' : `<p class="muted">Unlock the ${u.prev.name} first.</p>`}
-       <button class="btn" id="unlock-go" style="width:100%" ${u.ok && prevOpen ? '' : 'disabled'}>Unlock ${a.name}</button>`);
+       ${u.prevOpen ? '' : `<p class="muted">Unlock the ${u.prev.name} first.</p>`}
+       <button class="btn" id="unlock-go" style="width:100%" ${u.ok ? '' : 'disabled'}>Unlock ${a.name}</button>`);
     $('unlock-go').addEventListener('click', () => {
       if (!unlockInfo(a).ok) return;
       S.col.coins -= a.cost;
@@ -890,13 +952,23 @@
     }));
   }
   $('btn-shop').addEventListener('click', () => { if (fs.phase === 'idle') showShop(); });
+  $('bounty').addEventListener('click', () => {
+    const f = BY_ID[S.bounty.id];
+    if (!f || S.bounty.done || fs.phase !== 'idle' || f.area === S.col.area || !S.col.unlocked.includes(f.area)) return;
+    S.col.area = f.area; save();
+    resetFishing(AREA[f.area].blurb);
+    renderFishing();
+  });
 
   /* =====================================================================
      JOURNAL
      ===================================================================== */
   function renderJournal() {
     const total = Object.keys(S.col.caught).filter(id => BY_ID[id]).length;
-    let html = `<div class="j-total"><b>${total}</b> <span class="muted">of ${FISH.length} species caught</span></div>`;
+    const tally = { gold: 0, silver: 0, bronze: 0, golden: 0 };
+    Object.keys(S.col.caught).forEach(id => { const c = S.col.caught[id], m = BY_ID[id] && medalOf(c.best); if (m) tally[m.id]++; if (BY_ID[id] && c.g) tally.golden++; });
+    let html = `<div class="j-total"><b>${total}</b> <span class="muted">of ${FISH.length} species caught</span>` +
+      (total ? `<p class="j-medals"><span><i class="medal m-gold"></i>${tally.gold}</span><span><i class="medal m-silver"></i>${tally.silver}</span><span><i class="medal m-bronze"></i>${tally.bronze}</span><span><i class="gstar">★</i>${tally.golden} golden</span></p>` : '') + '</div>';
     AREAS.forEach(a => {
       const fishes = FISH.filter(f => f.area === a.id), got = areaCaught(a.id);
       const open = S.col.unlocked.includes(a.id);
@@ -906,7 +978,7 @@
           const c = S.col.caught[f.id], known = c || S.col.seen[f.id];
           return `<button class="card${known ? '' : ' unknown'}" data-fish="${f.id}">` +
             `<i class="dot r-${f.rarity}" title="${RARITY[f.rarity].name}"></i>` +
-            (c ? `<span class="tag">×${c.n}</span>` : '') +
+            (c ? `<span class="tag">${c.g ? '<i class="gstar">★</i>' : ''}${medalOf(c.best) ? `<i class="medal m-${medalOf(c.best).id}"></i>` : ''}×${c.n}</span>` : '') +
             window.FishArt.svg(f, { silhouette: !c }) +
             (known ? esc(f.name) : '???') + '</button>';
         }).join('') + '</div></div>';
@@ -918,17 +990,21 @@
     if (b) showFish(BY_ID[b.dataset.fish]);
   });
 
+  function nextMedal(f, best) {
+    const next = MEDALS.slice().reverse().find(m => best < m[1]);
+    return next ? `<br><span class="muted">${next[2]} at ${fmtCatchLen(f.len * next[1])}</span>` : '';
+  }
   function showFish(f) {
     const c = S.col.caught[f.id], seen = S.col.seen[f.id], a = AREA[f.area];
     const rar = `<span class="rar r-${f.rarity}">${RARITY[f.rarity].name}</span>`;
     if (!c && !seen) {
       openModal(`${window.FishArt.svg(f, { silhouette: true })}<h2>Not caught yet</h2>
         <p>Something ${RARITY[f.rarity].name.toLowerCase()} that lives in the <b>${a.name}</b>.</p>
-        <p class="muted">Catch it in Free Fishing to add its full entry to your journal.</p>`);
+        <p class="muted">Catch it in Fishing to add its full entry to your journal.</p>`);
       return;
     }
     openModal(
-      `${window.FishArt.svg(f, { silhouette: !c })}
+      `${window.FishArt.svg(f, { silhouette: !c, golden: !!(c && c.g) })}
        <h2>${esc(f.name)}</h2><p class="muted"><i>${esc(f.sci)}</i> · ${rar}</p>
        <p>${esc(f.clue)}</p>
        <table class="facts">
@@ -937,10 +1013,85 @@
          <tr><td>Native range</td><td>${esc(rangeLong(f))}</td></tr>
          <tr><td>Diet</td><td>${DIETS[f.diet]}</td></tr>
          <tr><td>Record size</td><td>${fmtLen(f.len)} · ${fmtKg(f.kg)}</td></tr>
-         ${c ? `<tr><td>Your catches</td><td>${c.n}</td></tr><tr><td>Your biggest</td><td>${fmtCatchLen(f.len * c.best)} · ${fmtCatchKg(f.kg * Math.pow(c.best, 3))}</td></tr>`
+         ${c ? `<tr><td>Your catches</td><td>${c.n}</td></tr><tr><td>Your biggest</td><td>${fmtCatchLen(f.len * c.best)} · ${fmtCatchKg(f.kg * Math.pow(c.best, 3))}</td></tr>` +
+               `<tr><td>Medal</td><td>${medalOf(c.best) ? `<i class="medal m-${medalOf(c.best).id}"></i> ${medalOf(c.best).name}` : 'None yet'}${nextMedal(f, c.best)}</td></tr>` +
+               `<tr><td>Golden</td><td>${c.g ? `<i class="gstar">★</i> Caught ${c.g}` : 'Not yet. About 1 catch in 30 is golden.'}</td></tr>`
              : '<tr><td>Status</td><td>Seen in the Daily Catch, not caught yet</td></tr>'}
        </table>`);
   }
+
+  /* =====================================================================
+     AQUARIUM
+     ===================================================================== */
+  const tank = new window.FathomScene.Tank($('tank'));
+  const tankCap = () => TANKS[S.tank.size].fish;
+  const RANK = { legendary: 0, rare: 1, uncommon: 2, common: 3 };
+  function renderTank() {
+    const cap = tankCap();
+    let ids = S.tank.fish.filter(id => S.col.caught[id]).slice(0, cap);
+    if (!S.tank.set && ids.length < cap) {
+      // until the player chooses for themselves, show off their best catches
+      const rest = Object.keys(S.col.caught).filter(id => BY_ID[id] && !ids.includes(id))
+        .sort((x, y) => RANK[BY_ID[x].rarity] - RANK[BY_ID[y].rarity] || BY_ID[y].len - BY_ID[x].len);
+      ids = ids.concat(rest).slice(0, cap);
+    }
+    S.tank.fish = ids;
+    tank.setFish(ids.map(id => ({ fish: BY_ID[id], golden: (S.col.caught[id].g || 0) > 0 })));
+    tank.setDecor(DECOR.filter(d => S.tank.decor[d.id] === 1).map(d => d.id));
+    $('tank-coins').textContent = S.col.coins.toLocaleString();
+    $('tank-info').textContent = `${ids.length} of ${cap} fish`;
+    $('tank-empty').hidden = ids.length > 0;
+    $('btn-stock').disabled = !Object.keys(S.col.caught).length;
+  }
+
+  function showStock() {
+    const cap = tankCap(), sel = S.tank.fish.slice();
+    const mine = FISH.filter(f => S.col.caught[f.id]);
+    const count = () => { $('stock-count').textContent = `${sel.length} of ${cap} chosen. Your ${TANKS[S.tank.size].name.toLowerCase()} holds ${cap}.`; };
+    openModal(
+      `<h2>Choose fish</h2><p class="muted" id="stock-count"></p><div class="grid stock">` +
+      mine.map(f => `<button class="card pick" data-pick="${f.id}" aria-pressed="${sel.includes(f.id)}">${window.FishArt.svg(f, { golden: S.col.caught[f.id].g > 0 })}${esc(f.name)}</button>`).join('') +
+      '</div><button class="btn" id="stock-ok" style="width:100%;margin-top:14px">Done</button>',
+      () => { S.tank.fish = sel; S.tank.set = true; save(); renderTank(); });
+    count();
+    $('modal-body').querySelector('.stock').addEventListener('click', e => {
+      const b = e.target.closest('[data-pick]');
+      if (!b) return;
+      const id = b.dataset.pick, at = sel.indexOf(id);
+      if (at >= 0) sel.splice(at, 1);
+      else if (sel.length < cap) sel.push(id);
+      else { $('stock-count').textContent = `The tank is full at ${cap}. Take one out first, or buy a bigger tank.`; return; }
+      b.setAttribute('aria-pressed', at < 0);
+      count();
+    });
+    $('stock-ok').addEventListener('click', closeModal);
+  }
+
+  function showTankShop() {
+    const next = TANKS[S.tank.size + 1];
+    const size = `<div class="shop-item"><div><b>${next ? 'Bigger tank' : TANKS[S.tank.size].name}</b><p>${next ? `Yours holds ${tankCap()} fish. The ${next.name.toLowerCase()} holds ${next.fish}.` : `Holds ${tankCap()} fish. This is the biggest tank.`}</p></div>` +
+      `<button class="btn small" id="buy-tank" ${!next || S.col.coins < next.cost ? 'disabled' : ''}>${next ? next.cost.toLocaleString() : 'Maxed'}</button></div>`;
+    const items = DECOR.map(d => {
+      const own = d.id in S.tank.decor, on = S.tank.decor[d.id] === 1;
+      return `<div class="shop-item"><div class="deco-row"><span class="deco-pic">${window.FathomScene.decorSvg(d)}</span><div><b>${d.name}</b><p>${own ? (on ? 'In your tank' : 'Put away') : 'Decoration'}</p></div></div>` +
+        (own ? `<button class="btn small ghost" data-deco="${d.id}">${on ? 'Put away' : 'Put back'}</button>`
+             : `<button class="btn small" data-deco="${d.id}" ${S.col.coins < d.cost ? 'disabled' : ''}>${d.cost.toLocaleString()}</button>`) + '</div>';
+    }).join('');
+    openModal(`<h2>Tank shop</h2><p class="muted"><i class="coin"></i> ${S.col.coins.toLocaleString()} coins</p>${size}${items}`);
+    $('buy-tank').addEventListener('click', () => {
+      if (!next || S.col.coins < next.cost) return;
+      S.col.coins -= next.cost; S.tank.size++; save();
+      renderTank(); showTankShop();
+    });
+    $('modal-body').querySelectorAll('[data-deco]').forEach(b => b.addEventListener('click', () => {
+      const d = DECOR.find(x => x.id === b.dataset.deco);
+      if (d.id in S.tank.decor) S.tank.decor[d.id] = S.tank.decor[d.id] ? 0 : 1;
+      else { if (S.col.coins < d.cost) return; S.col.coins -= d.cost; S.tank.decor[d.id] = 1; }
+      save(); renderTank(); showTankShop();
+    }));
+  }
+  $('btn-stock').addEventListener('click', showStock);
+  $('btn-tankshop').addEventListener('click', showTankShop);
 
   /* =====================================================================
      TABS + BOOT
@@ -953,11 +1104,13 @@
     }
     currentTab = tab;
     if (tab === 'fish') fx.start(); else fx.stop();
+    if (tab === 'tank') tank.start(); else tank.stop();
     document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === tab));
-    ['daily', 'fish', 'journal'].forEach(t => { $('view-' + t).hidden = t !== tab; });
+    ['daily', 'fish', 'journal', 'tank'].forEach(t => { $('view-' + t).hidden = t !== tab; });
     if (tab === 'daily') renderDaily();
     if (tab === 'fish') renderFishing();
     if (tab === 'journal') renderJournal();
+    if (tab === 'tank') renderTank();
     window.scrollTo(0, 0);
   }
   document.querySelector('.tabs').addEventListener('click', e => {
@@ -969,6 +1122,7 @@
     if (currentTab === 'daily') renderDaily();
     if (currentTab === 'fish') renderFishing();
     if (currentTab === 'journal') renderJournal();
+    if (currentTab === 'tank') renderTank();
     if (S.seenHelp && $('help-ok')) closeModal();
   }
 
@@ -979,5 +1133,5 @@
   initCloud();
 
   // exposed for automated tests
-  window.__fathom = { get S() { return S; }, FISH, compare, answerFor, dayNum, fightInit, fightStep, pickFish, shareText, save, BY_ID, mergeStates, adopt, fresh, backupCode, restoreBackup };
+  window.__fathom = { get S() { return S; }, FISH, compare, answerFor, dayNum, fightInit, fightStep, pickFish, shareText, save, BY_ID, mergeStates, adopt, fresh, backupCode, restoreBackup, medalOf, unlockInfo, recordCatch, tank, get today() { return today; } };
 })();

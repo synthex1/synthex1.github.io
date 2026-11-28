@@ -166,6 +166,11 @@ window.FishArt = (function () {
     if (S.bill) back += `<path d="M${nx + 8},${CY - 4} L${nx - S.bill},${CY - 1} L${nx + 8},${CY + 3} Z" fill="${a.c}"/>`;
     if (S.snout === 'gar') back += `<path d="M${nx + 6},${CY - 5} L${nx - 26},${CY - 2.5} Q${nx - 30},${CY} ${nx - 26},${CY + 2.5} L${nx + 6},${CY + 5} Z" fill="${a.c}"/>`;
     if (S.snout === 'paddle') back += `<path d="M${nx + 6},${CY - 3} L${nx - 34},${CY - 5} Q${nx - 50},${CY - 1} ${nx - 34},${CY + 3} L${nx + 6},${CY + 6} Z" fill="${a.c}"/>`;
+    if (S.snout === 'saw') {
+      let teeth = '';
+      for (let i = 0; i < 9; i++) { const tx = nx - 6 - i * 6; teeth += `M${tx},${CY - 3.6} l1.6,-5 l1.6,5 Z M${tx},${CY + 3.2} l1.6,5 l1.6,-5 Z `; }
+      back += `<path d="${teeth}" fill="#f1ead6"/><path d="M${nx + 8},${CY - 6} L${nx - 60},${CY - 3.4} Q${nx - 64},${CY} ${nx - 60},${CY + 3} L${nx + 8},${CY + 6} Z" fill="${a.c}"/>`;
+    }
     if (S.snout === 'blade') back += `<path d="M${nx + 10},${CY - 9} L${nx - 30},${CY - 9} Q${nx - 34},${CY - 7} ${nx - 28},${CY - 5} L${nx + 6},${CY} Z" fill="${a.c}"/>`;
 
     back += `<path d="${tailPath(S.tail, px - 5, tx, ph, S.th)}" fill="${tailC}"/>`;
@@ -406,13 +411,19 @@ window.FishArt = (function () {
 
   function svg(fish, opts) {
     opts = opts || {};
-    const a = fish.art, id = 'f' + (++uid), rand = rng(hash(fish.id));
+    let a = fish.art;
+    if (opts.golden) {
+      a = Object.assign({}, a, { c: '#e8b434', b: '#fff2bd', f: '#c58a17' });
+      if (a.pc) a.pc = a.p === 'bands' ? '#fff8dc' : '#8a5a10';
+      if (a.x) { a.x = Object.assign({}, a.x); ['tailC', 'finlets', 'stripe', 'mask', 'tips', 'lips'].forEach(k => { if (a.x[k]) a.x[k] = k === 'mask' || k === 'tips' ? '#8a5a10' : '#f6d461'; }); }
+    }
+    const id = 'f' + (++uid), rand = rng(hash(fish.id));
     let body;
     if (a.s === 'seahorse') body = seahorse(a);
     else if (SPECIAL[a.s]) body = SPECIAL[a.s](a, id, rand);
     else body = profile(a, id, rand);
     const cls = 'fish-art' + (opts.silhouette ? ' sil' : '') + (opts.cls ? ' ' + opts.cls : '');
-    const label = opts.silhouette ? 'Mystery fish silhouette' : fish.name;
+    const label = opts.silhouette ? 'Mystery fish silhouette' : (opts.golden ? 'Golden ' : '') + fish.name;
     return `<svg class="${cls}" viewBox="0 0 240 120" role="img" aria-label="${label}">${body}</svg>`;
   }
 

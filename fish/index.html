@@ -39,9 +39,10 @@
   </header>
 
   <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="daily" aria-selected="true">Daily Catch</button>
-    <button role="tab" data-tab="fish" aria-selected="false">Free Fishing</button>
+    <button role="tab" data-tab="daily" aria-selected="true">Daily</button>
+    <button role="tab" data-tab="fish" aria-selected="false">Fishing</button>
     <button role="tab" data-tab="journal" aria-selected="false">Journal</button>
+    <button role="tab" data-tab="tank" aria-selected="false">Aquarium</button>
   </nav>
 
   <main>
@@ -77,6 +78,7 @@
         <button id="btn-shop" class="btn small">Tackle shop</button>
       </div>
 
+      <button id="bounty" class="bounty" type="button" aria-label="Today's bounty"></button>
       <div id="areas" class="areas" role="tablist" aria-label="Fishing areas"></div>
 
       <div id="scene" class="scene">
@@ -102,6 +104,25 @@
     <!-- Journal -->
     <section id="view-journal" class="view" hidden>
       <div id="journal"></div>
+    </section>
+
+    <!-- Aquarium -->
+    <section id="view-tank" class="view" hidden>
+      <div class="fish-top">
+        <div class="wallet">
+          <span class="chip"><i class="coin"></i><b id="tank-coins">0</b></span>
+          <span class="chip" id="tank-info"></span>
+        </div>
+        <div class="wallet">
+          <button id="btn-stock" class="btn small ghost">Choose fish</button>
+          <button id="btn-tankshop" class="btn small">Tank shop</button>
+        </div>
+      </div>
+      <div class="tank-wrap">
+        <canvas id="tank" class="tank" aria-label="Your aquarium. Tap the water to feed the fish."></canvas>
+        <p id="tank-empty" class="tank-empty" hidden>Nothing lives here yet. Catch a fish in Fishing and it can move in.</p>
+      </div>
+      <p class="muted center tank-hint">Tap the water to drop food. Tap a fish to see its name.</p>
     </section>
   </main>
 

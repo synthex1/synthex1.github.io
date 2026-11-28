@@ -23,7 +23,17 @@
       sky: ['#6fb3e6', '#cfe6f6'], sea: ['#1f66b0', '#0a2a5c'] },
     { id: 'deep',  name: 'Deep Sea',   water: 'salt',  need: 7, cost: 6000, mult: 9,
       blurb: 'A very long line into the dark.',
-      sky: ['#0d1a33', '#1f2f55'], sea: ['#12264d', '#03060f'] }
+      sky: ['#0d1a33', '#1f2f55'], sea: ['#12264d', '#03060f'] },
+    /* Expeditions: opened by how full the whole journal is, not by the area before. */
+    { id: 'mangrove', name: 'Mangrove', water: 'salt', needTotal: 40, cost: 4000, mult: 10,
+      blurb: 'Warm, muddy channels under a tangle of roots, where rivers meet the sea.',
+      sky: ['#bfe0c8', '#f1f0c8'], sea: ['#6f8f5a', '#2a3f2a'] },
+    { id: 'kelp', name: 'Kelp Forest', water: 'salt', needTotal: 60, cost: 8000, mult: 11,
+      blurb: 'Cold Pacific water and towering kelp, full of things that hide.',
+      sky: ['#9fc4d6', '#e6eef0'], sea: ['#2f7a6f', '#0f3a3a'] },
+    { id: 'polar', name: 'Polar Ice', water: 'salt', needTotal: 80, cost: 15000, mult: 12,
+      blurb: 'Open leads between the floes, at both ends of the Earth.',
+      sky: ['#0f2347', '#5f8fb0'], sea: ['#3f7fa0', '#0a2540'] }
   ];
 
   const REGIONS = {
@@ -338,5 +348,120 @@
     'A "rattail": big head, bulging eyes and a body tapering to a whip. It can live for more than 50 years.',
     { s: 'eel', c: '#7a7f88', b: '#b9bdc4', f: '#5f646c', x: { rattail: true, A: 2, W: 17, freq: 0.6 } });
 
-  window.FATHOM_DATA = { AREAS, REGIONS, DIETS, RARITY, FISH };
+  /* The first 91 species above are the original set. The daily puzzle's first
+     cycle is drawn from them alone, so keep new species below this line. */
+  const ORIGINAL_COUNT = FISH.length;
+
+  /* ---------------- Mangrove ---------------- */
+  F('greysnapper', 'Grey snapper', 'Lutjanus griseus', 'Snappers', 'mangrove', ['ATL'], 'fish', 89, 20, 'common',
+    'Its young shelter among tangled roots in the shallows before moving out to reefs as adults.',
+    { s: 'classic', c: '#9a6f5a', b: '#e8c9b8', f: '#7d5646', x: { h: 26, b: 24, dorsal: 'long' } });
+  F('mudskipper', 'Atlantic mudskipper', 'Periophthalmus barbarus', 'Gobies', 'mangrove', ['AF', 'ATL'], 'inv', 16, 0.03, 'common',
+    'A fish that spends most of its time out of the water, walking on its fins and breathing through its skin.',
+    { s: 'long', c: '#8a7a5a', b: '#e6dcc0', f: '#5f8fb0', p: 'spots', pc: '#3aa0d0', x: { nx: 30, px: 186, h: 13, b: 12, blunt: true, eye: 5, dorsal: 'two', tail: 'fan', nose: -2 } });
+  F('archerfish', 'Banded archerfish', 'Toxotes jaculatrix', 'Archerfish', 'mangrove', ['AS', 'OC', 'IND', 'PAC'], 'inv', 30, 0.5, 'uncommon',
+    'Spits a jet of water to knock insects off overhanging leaves, correcting its aim for the bending of light.',
+    { s: 'deep', c: '#d9dcd6', b: '#f4f5f0', f: '#3a3f3a', p: 'bars', pc: '#1f231f', x: { h: 30, b: 30, n: 5, nose: -6, dorsal: 'back' } });
+  F('mangrovejack', 'Mangrove jack', 'Lutjanus argentimaculatus', 'Snappers', 'mangrove', ['IND', 'PAC'], 'fish', 150, 16, 'rare',
+    'An ambush hunter that anglers know for bolting straight back into the roots the instant it is hooked.',
+    { s: 'classic', c: '#b5553a', b: '#e9b9a0', f: '#8f3f2a', x: { h: 27, b: 25, dorsal: 'long', tail: 'fan' } });
+  F('bullshark', 'Bull shark', 'Carcharhinus leucas', 'Sharks', 'mangrove', ALL, 'fish', 400, 316, 'rare',
+    'Can live in fresh water, and has been found thousands of kilometres up rivers such as the Amazon.',
+    { s: 'shark', c: '#8a8f93', b: '#f2f3f3', f: '#8a8f93', x: { h: 23, b: 19, blunt: true } });
+  F('sawfish', 'Largetooth sawfish', 'Pristis pristis', 'Rays & skates', 'mangrove', ALL, 'fish', 700, 600, 'legendary',
+    'A ray with a long, toothed snout that senses the electric fields of its prey and then slashes through them.',
+    { s: 'shark', c: '#9a8f6f', b: '#efe9d6', f: '#8a7f60', x: { nx: 70, snout: 'saw', h: 14, b: 11 } });
+  F('tripletail', 'Tripletail', 'Lobotes surinamensis', 'Tripletails', 'mangrove', ALL, 'inv', 110, 19, 'uncommon',
+    'Floats on its side near the surface, passing itself off as a drifting leaf.',
+    { s: 'deep', c: '#6f5f3a', b: '#b9a36a', f: '#5a4c2e', p: 'mottle', pc: '#3d331d', x: { h: 36, b: 36, blunt: true } });
+  F('milkfish', 'Milkfish', 'Chanos chanos', 'Milkfish', 'mangrove', ['IND', 'PAC'], 'plant', 180, 14, 'common',
+    'The national fish of the Philippines, where it has been farmed in ponds for centuries.',
+    { s: 'torpedo', c: '#a9b8c2', b: '#f6f8f9', f: '#6f7f8a', x: { h: 19, b: 18, th: 28 } });
+  F('scat', 'Spotted scat', 'Scatophagus argus', 'Scats', 'mangrove', ['IND', 'PAC'], 'omni', 38, 1, 'common',
+    'Its scientific name means "dung-eater", from its habit of gathering wherever waste washes into the water.',
+    { s: 'deep', c: '#b9b08a', b: '#e9e6cf', f: '#8f8763', p: 'bigspots', pc: '#2a261a', x: { h: 36, b: 34 } });
+  F('foureyes', 'Four-eyed fish', 'Anableps anableps', 'Four-eyed fishes', 'mangrove', ['SA', 'ATL'], 'inv', 32, 0.4, 'uncommon',
+    'Each eye is split in two, letting it watch above and below the waterline at the same time.',
+    { s: 'long', c: '#8f8a6a', b: '#e9e4c8', f: '#6f6a4f', p: 'hstripes', pc: '#4a4632', x: { nx: 22, h: 11, b: 10, eye: 5, tail: 'fan', nose: -3 } });
+  F('crevalle', 'Crevalle jack', 'Caranx hippos', 'Jacks', 'mangrove', ['ATL'], 'fish', 124, 32, 'uncommon',
+    'Hunts in packs that pin baitfish against beaches and seawalls, and grunts loudly when it is landed.',
+    { s: 'classic', c: '#8fa3a0', b: '#f2d26a', f: '#c9a52e', x: { h: 29, b: 25, tail: 'lunate', th: 28, dorsal: 'tuna', blunt: true, ph: 3 } });
+  F('milkpuffer', 'Milk-spotted puffer', 'Chelonodon patoca', 'Pufferfish & kin', 'mangrove', ['IND', 'PAC'], 'inv', 38, 1, 'uncommon',
+    'Gulps water to balloon to twice its size, and its organs carry a powerful nerve poison.',
+    { s: 'deep', c: '#6a7f4a', b: '#f1f1e6', f: '#d9c23a', p: 'spots', pc: '#f1f1e6', x: { h: 30, b: 32, blunt: true, dorsal: 'back' } });
+
+  /* ---------------- Kelp Forest ---------------- */
+  F('garibaldi', 'Garibaldi', 'Hypsypops rubicundus', 'Damselfish', 'kelp', ['PAC'], 'inv', 36, 0.9, 'common',
+    'The state marine fish of California. Males scrub a patch of rock clean and guard a garden of red algae for their eggs.',
+    { s: 'deep', c: '#f2701a', b: '#f58a2e', f: '#e0600f', x: { h: 34, b: 32, tail: 'fork' } });
+  F('sheephead', 'California sheephead', 'Semicossyphus pulcher', 'Wrasse & parrotfish', 'kelp', ['PAC'], 'inv', 91, 16, 'uncommon',
+    'Every one is born female and the largest turn male. Its appetite for sea urchins helps keep the forest standing.',
+    { s: 'classic', c: '#d1453a', b: '#e9a59a', f: '#1c1c20', x: { h: 30, b: 28, hump: true, mask: '#1c1c20', tailC: '#1c1c20', tail: 'fan', dorsal: 'long' } });
+  F('kelpbass', 'Kelp bass', 'Paralabrax clathratus', 'Groupers', 'kelp', ['PAC'], 'fish', 72, 6.6, 'common',
+    'Known to California anglers as the "calico bass" for its checkered pattern.',
+    { s: 'classic', c: '#6f6a3a', b: '#e9e6c8', f: '#5a5630', p: 'mottle', pc: '#d9d6a8' });
+  F('giantseabass', 'Giant sea bass', 'Stereolepis gigas', 'Wreckfish', 'kelp', ['PAC'], 'fish', 250, 256, 'legendary',
+    'Can outweigh a grizzly bear and live for more than 70 years. The young are bright orange with black spots.',
+    { s: 'classic', c: '#3f434a', b: '#8a8f96', f: '#33373d', p: 'bigspots', pc: '#22252a', x: { h: 33, b: 31, tail: 'fan', dorsal: 'long', blunt: true } });
+  F('leopardshark', 'Leopard shark', 'Triakis semifasciata', 'Sharks', 'kelp', ['PAC'], 'inv', 198, 18, 'uncommon',
+    'Gathers in warm shallows by the hundreds, and gives birth to live pups.',
+    { s: 'shark', c: '#b3a58a', b: '#f2ede0', f: '#a39679', p: 'bars', pc: '#3a3226', x: { h: 15, b: 12, n: 9 } });
+  F('lingcod', 'Lingcod', 'Ophiodon elongatus', 'Scorpionfish & sculpins', 'kelp', ['PAC'], 'fish', 152, 59, 'rare',
+    'Roughly one in five has flesh that is bright blue-green, which turns white when it is cooked.',
+    { s: 'long', c: '#6f6a4a', b: '#d9d4b0', f: '#5a5638', p: 'mottle', pc: '#3a3722', x: { nx: 18, h: 17, b: 17, dorsal: 'ridge', tail: 'fan', teeth: true } });
+  F('cabezon', 'Cabezon', 'Scorpaenichthys marmoratus', 'Scorpionfish & sculpins', 'kelp', ['PAC'], 'inv', 99, 14, 'uncommon',
+    'Its name is Spanish for "big-headed", and its eggs are poisonous to eat.',
+    { s: 'classic', c: '#7a5a3a', b: '#c9b48a', f: '#6a4c30', p: 'mottle', pc: '#3f2c1a', x: { h: 30, b: 28, blunt: true, tail: 'fan', dorsal: 'long' } });
+  F('wolfeel', 'Wolf eel', 'Anarrhichthys ocellatus', 'Wolffish', 'kelp', ['PAC'], 'inv', 240, 18, 'rare',
+    'Not an eel at all. Pairs share a rocky den for life and crush crabs and urchins in powerful jaws.',
+    { s: 'eel', c: '#7f8a94', b: '#b9c2c9', f: '#5f6a74', p: 'spots', pc: '#2f363d', x: { W: 11, A: 9 } });
+  F('calhalibut', 'California halibut', 'Paralichthys californicus', 'Flatfish', 'kelp', ['PAC'], 'fish', 152, 33, 'uncommon',
+    'Unusually for a flatfish, it can have its eyes on either the left side or the right.',
+    { s: 'flat', c: '#6a5f45', f: '#7a6f52', p: 'mottle', pc: '#463e2a', x: { rx: 76, ry: 26 } });
+  F('batray', 'Bat ray', 'Myliobatis californica', 'Rays & skates', 'kelp', ['PAC'], 'inv', 180, 82, 'rare',
+    'Flaps its wings against the seabed to dig out clams, leaving pits that other fish come to feed in. (Its "length" here is wingspan.)',
+    { s: 'ray', c: '#4a4238', p: 'spots', pc: '#5f574a' });
+  F('hornshark', 'Horn shark', 'Heterodontus francisci', 'Sharks', 'kelp', ['PAC'], 'inv', 122, 10, 'common',
+    'Lays spiral, corkscrew-shaped egg cases that it wedges into cracks in the rock.',
+    { s: 'shark', c: '#b39a72', b: '#efe4cc', f: '#a0885f', p: 'spots', pc: '#3a2c1a', x: { h: 16, b: 13, blunt: true, n: 24 } });
+  F('senorita', 'Señorita', 'Oxyjulis californica', 'Wrasse & parrotfish', 'kelp', ['PAC'], 'inv', 25, 0.1, 'common',
+    'A cleaner fish that picks parasites off bigger fish, and buries itself in the sand to sleep.',
+    { s: 'torpedo', c: '#e0a34a', b: '#f6e3b0', f: '#d18a2e', x: { h: 13, b: 12, tail: 'fan', dorsal: 'ridge', marks: [[0.99, 0, 4, '#1a1a1a']] } });
+
+  /* ---------------- Polar Ice ---------------- */
+  F('arcticchar', 'Arctic char', 'Salvelinus alpinus', 'Salmon & trout', 'polar', ['NA', 'EU', 'AS', 'ARC'], 'fish', 107, 15, 'common',
+    'Lives farther north than any other freshwater fish, in lakes that are frozen over for most of the year.',
+    { s: 'torpedo', c: '#4f7a6a', b: '#e86a3a', f: '#d9552a', p: 'spots', pc: '#f2d9c9', x: { adipose: true, h: 20 } });
+  F('arcticcod', 'Arctic cod', 'Boreogadus saida', 'Cod & kin', 'polar', ['ARC'], 'plank', 40, 0.2, 'common',
+    'Antifreeze proteins in its blood let it live under the sea ice, where it is the main food of seals, narwhals and belugas.',
+    { s: 'torpedo', c: '#7a7f6a', b: '#e9ebe0', f: '#5f6452', x: { h: 15, b: 14, dorsal: 'three', barbels: 1 } });
+  F('capelin', 'Capelin', 'Mallotus villosus', 'Smelts', 'polar', ['ATL', 'PAC', 'ARC'], 'plank', 25, 0.05, 'common',
+    'Throws itself onto beaches by the million to spawn. Its orange roe is the "masago" on sushi.',
+    { s: 'torpedo', c: '#7f9a6a', b: '#f1f4f0', f: '#6a8458', x: { h: 12, b: 11, adipose: true } });
+  F('greenlandhalibut', 'Greenland halibut', 'Reinhardtius hippoglossoides', 'Flatfish', 'polar', ['ATL', 'PAC', 'ARC'], 'fish', 120, 45, 'uncommon',
+    'A flatfish that swims upright like an ordinary fish, with one eye that only made it as far as the top of its head.',
+    { s: 'flat', c: '#3a3a3f', f: '#4a4a50', p: 'mottle', pc: '#2a2a2e', x: { rx: 78, ry: 24 } });
+  F('wolffish', 'Atlantic wolffish', 'Anarhichas lupus', 'Wolffish', 'polar', ['ATL', 'ARC'], 'inv', 150, 24, 'uncommon',
+    'Makes its own antifreeze, and regrows a full set of shell-crushing teeth every year.',
+    { s: 'long', c: '#6f7f8a', b: '#c9d2d9', f: '#55636e', p: 'bars', pc: '#3a454e', x: { nx: 18, h: 18, b: 17, dorsal: 'ridge', tail: 'fan', blunt: true, fangs: true, n: 10 } });
+  F('inconnu', 'Inconnu', 'Stenodus leucichthys', 'Salmon & trout', 'polar', ['NA', 'AS', 'ARC'], 'fish', 150, 40, 'rare',
+    'Its name is French for "unknown", given by fur traders who had never seen its like. Anglers call it the tarpon of the north.',
+    { s: 'torpedo', c: '#9aa5ad', b: '#f4f6f7', f: '#6f7a84', x: { h: 19, b: 18, adipose: true, nose: 2 } });
+  F('lumpfish', 'Lumpfish', 'Cyclopterus lumpus', 'Scorpionfish & sculpins', 'polar', ['ATL', 'ARC'], 'inv', 61, 9.6, 'uncommon',
+    'Clings to rocks with a suction cup on its belly, and is put to work on salmon farms eating parasites.',
+    { s: 'deep', c: '#5f7f8f', b: '#c9d6d9', f: '#4a6a7a', p: 'bigspots', pc: '#3a5564', x: { h: 36, b: 36, blunt: true, nx: 54, px: 176, dorsal: 'back' } });
+  F('antarctictoothfish', 'Antarctic toothfish', 'Dissostichus mawsoni', 'Antarctic fishes', 'polar', ['SOU'], 'fish', 200, 135, 'rare',
+    'Its heart beats only about once every six seconds, and antifreeze in its blood stops it freezing solid.',
+    { s: 'classic', c: '#4f4a45', b: '#b9b5ab', f: '#3f3b37', p: 'mottle', pc: '#2a2725', x: { h: 21, b: 21, tail: 'fan', dorsal: 'ridge', anal: 'long' } });
+  F('icefish', 'Mackerel icefish', 'Champsocephalus gunnari', 'Antarctic fishes', 'polar', ['SOU'], 'plank', 66, 2, 'uncommon',
+    'Its blood is clear. Its family are the only vertebrates with no haemoglobin, the stuff that makes blood red.',
+    { s: 'long', c: '#c9d6dc', b: '#f4f8fa', f: '#8fa3ad', p: 'bars', pc: '#7f97a3', x: { nx: 20, h: 14, b: 13, dorsal: 'two', eye: 4.2, n: 7 } });
+  F('thornyskate', 'Thorny skate', 'Amblyraja radiata', 'Rays & skates', 'polar', ['ATL', 'ARC'], 'inv', 105, 11, 'uncommon',
+    'A row of heavy thorns runs down the middle of its back and tail.',
+    { s: 'ray', c: '#7a6a55', p: 'spots', pc: '#d9cfae' });
+  F('sleepershark', 'Pacific sleeper shark', 'Somniosus pacificus', 'Sharks', 'polar', ['PAC', 'ARC'], 'fish', 440, 363, 'legendary',
+    'Glides so slowly and silently that it ambushes far faster prey. One was filmed inside an active underwater volcano.',
+    { s: 'shark', c: '#5a5f66', b: '#7f858c', f: '#4d5258', x: { h: 21, b: 19, blunt: true, dorsal: 'sharksmall' } });
+
+  window.FATHOM_DATA = { AREAS, REGIONS, DIETS, RARITY, FISH, ORIGINAL_COUNT };
 })();
