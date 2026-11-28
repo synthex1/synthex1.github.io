@@ -248,6 +248,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .deco-row { display: flex; align-items: center; gap: 10px; }
 .deco-pic { width: 42px; height: 42px; flex: none; border-radius: 8px; background: #1a7fa6; display: grid; place-items: end center; overflow: hidden; }
 .deco-pic svg { width: 38px; height: 38px; display: block; }
+.rod-sw { width: 64px; height: 12px; flex: none; border-radius: 6px; border: 1px solid rgba(255, 255, 255, .25); transform: rotate(-18deg); margin: 0 2px; }
+.float-pic { width: 42px; height: 42px; flex: none; border-radius: 8px; background: linear-gradient(#a9d8ee 55%, #3f8a70 55%); }
+.modal-card h3:first-of-type { margin-top: 10px; }
 
 /* ---------- journal ---------- */
 .j-total { text-align: center; margin-bottom: 16px; }

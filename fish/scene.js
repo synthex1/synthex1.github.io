@@ -365,6 +365,61 @@ window.FathomScene = (function () {
     return o;
   }
 
+  /* Rod finishes and floats the player can buy. Purely cosmetic. */
+  const RODS = [
+    { id: 'classic', name: 'Classic', cost: 0, wood: '#3b2a1c', night: '#8a6a4a', grip: '#1c1410', gripNight: '#5b4636', sw: '#3b2a1c' },
+    { id: 'bamboo', name: 'Bamboo', cost: 400, wood: '#b89a4a', night: '#d1b566', grip: '#c9a877', rings: '#7a6428', sw: 'repeating-linear-gradient(90deg,#b89a4a 0 13px,#7a6428 13px 15px)' },
+    { id: 'carbon', name: 'Carbon', cost: 1200, wood: '#22262b', night: '#7a838d', grip: '#3a3f45', gripNight: '#59616a', rings: '#e2483d', sw: 'repeating-linear-gradient(90deg,#22262b 0 16px,#e2483d 16px 18px)' },
+    { id: 'ocean', name: 'Ocean blue', cost: 2500, wood: '#1f6fae', night: '#5fa8e0', grip: '#c9a877', sw: '#1f6fae' },
+    { id: 'cherry', name: 'Cherry red', cost: 2500, wood: '#b3262b', night: '#e0575b', grip: '#1c1410', gripNight: '#5b4636', sw: '#b3262b' },
+    { id: 'candy', name: 'Candy stripe', cost: 5000, stripes: ['#e2483d', '#f6f1e6'], grip: '#f6f1e6', sw: 'repeating-linear-gradient(90deg,#e2483d 0 8px,#f6f1e6 8px 16px)' },
+    { id: 'gold', name: 'Gold-plated', cost: 15000, wood: '#d9a521', night: '#f0c64a', grip: '#2a2118', gripNight: '#5b4636', reel: '#f0c64a', shine: true, sw: 'linear-gradient(90deg,#b8860b,#ffe27a,#b8860b)' },
+    { id: 'rainbow', name: 'Rainbow', cost: 30000, rainbow: true, grip: '#f6f1e6', sw: 'linear-gradient(90deg,#e2483d,#f2c14e,#5fd08a,#58a6ff,#a996ff)' }
+  ];
+  const FLOATS = [
+    { id: 'classic', name: 'Classic', cost: 0 },
+    { id: 'bee', name: 'Bumblebee', cost: 300 },
+    { id: 'pencil', name: 'Pencil float', cost: 600 },
+    { id: 'glow', name: 'Glow float', cost: 1500 },
+    { id: 'heart', name: 'Heart', cost: 2500 },
+    { id: 'duck', name: 'Rubber duck', cost: 4000 }
+  ];
+  /* Draws a float centred on the waterline at the origin, about 11 x 15 units. */
+  function drawFloat(ctx, id) {
+    const edge = 'rgba(0,0,0,.42)';
+    const oval = (rx, ry, top, bot, stem) => {
+      ctx.fillStyle = bot; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = top; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, 7); ctx.stroke();
+      ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -ry); ctx.lineTo(0, -ry - (stem || 5.4)); ctx.stroke();
+    };
+    if (id === 'bee') {
+      oval(5.6, 7.6, '#f6c61e', '#f6c61e');
+      ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, 5.6, 7.6, 0, 0, 7); ctx.clip();
+      ctx.fillStyle = '#1c1c1c'; ctx.fillRect(-7, -4.4, 14, 2.6); ctx.fillRect(-7, 0.4, 14, 2.6); ctx.fillRect(-7, 5, 14, 3); ctx.restore();
+    } else if (id === 'pencil') {
+      oval(3, 11, '#f08a1e', '#ffffff', 7);
+      ctx.fillStyle = '#1c1c1c'; ctx.fillRect(-3, -1.2, 6, 1.6);
+    } else if (id === 'glow') {
+      const g = ctx.createRadialGradient(0, -2, 1, 0, -2, 17);
+      g.addColorStop(0, 'rgba(190,255,130,.55)'); g.addColorStop(1, 'rgba(190,255,130,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -2, 17, 0, 7); ctx.fill();
+      oval(5.4, 7.6, '#b6ff7a', '#eaffd8');
+    } else if (id === 'heart') {
+      ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(0, -12); ctx.stroke();
+      ctx.fillStyle = '#f0608a'; ctx.strokeStyle = edge; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(0, 8); ctx.bezierCurveTo(-12, -1, -6.5, -11, 0, -4.5); ctx.bezierCurveTo(6.5, -11, 12, -1, 0, 8); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.beginPath(); ctx.ellipse(-3.4, -3.6, 1.6, 1, -0.6, 0, 7); ctx.fill();
+    } else if (id === 'duck') {
+      ctx.fillStyle = '#f6d21e'; ctx.strokeStyle = edge; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(-0.5, -1, 7.4, 5.2, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(4, -7.6, 3.9, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f08a1e'; ctx.beginPath(); ctx.moveTo(7.2, -8.6); ctx.lineTo(11.2, -7.4); ctx.lineTo(7.2, -6.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#1c1c1c'; ctx.beginPath(); ctx.arc(5, -8.6, 0.8, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(160,120,0,.7)'; ctx.beginPath(); ctx.moveTo(-4.6, -1.6); ctx.quadraticCurveTo(-1, -5, 2.6, -1.6); ctx.stroke();
+    } else oval(5.4, 7.6, '#e2483d', '#ffffff');
+  }
+
   /* =====================================================================
      The play layer
      ===================================================================== */
@@ -378,6 +433,7 @@ window.FathomScene = (function () {
     let ripples = [], drops = [];
     let castT = -99, landed = true, prevPhase = 'idle', nextRing = 0, nextAmbient = 2;
     let fx = 0, fy = 0, prevFx = 0, face = 1, surging = false, leap = null, fishArt = null;
+    let rodStyle = RODS[0], floatId = 'classic';
     function resize() {
       const r = canvas.getBoundingClientRect();
       if (!r.width || !r.height) return;
@@ -409,22 +465,27 @@ window.FathomScene = (function () {
       }
       const cx = lerp(g.butt.x, tip.x, 0.66), cy = lerp(g.butt.y, tip.y, 0.66);
       const at = u => { const a = 1 - u; return { x: a * a * g.butt.x + 2 * a * u * cx + u * u * tx, y: a * a * g.butt.y + 2 * a * u * cy + u * u * ty }; };
-      const wood = night ? '#8a6a4a' : '#3b2a1c', N = 20;
+      const R = rodStyle, wood = night ? (R.night || R.wood) : R.wood, grip = night ? (R.gripNight || R.grip) : R.grip, N = 20;
       ctx.lineCap = 'round';
       let p = at(0);
       for (let i = 1; i <= N; i++) {
         const u = i / N, q = at(u);
-        ctx.strokeStyle = u < 0.16 ? (night ? '#5b4636' : '#1c1410') : wood;
+        ctx.strokeStyle = u < 0.16 ? grip : R.rainbow ? `hsl(${Math.round(u * 300)},85%,${night ? 64 : 53}%)` : R.stripes ? R.stripes[i % 2] : wood;
         ctx.lineWidth = (u < 0.16 ? 9 : 6.4 - 5 * u);
         ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke();
         p = q;
       }
-      ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 1;
+      if (R.rings) {
+        ctx.lineCap = 'butt'; ctx.strokeStyle = R.rings;
+        [0.3, 0.44, 0.58, 0.72, 0.86].forEach(u => { const a = at(u - 0.011), b = at(u + 0.011); ctx.lineWidth = 7.4 - 5 * u; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); });
+        ctx.lineCap = 'round';
+      }
+      ctx.strokeStyle = R.shine ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.22)'; ctx.lineWidth = R.shine ? 1.4 : 1;
       ctx.beginPath(); p = at(0.18); ctx.moveTo(p.x - 1.5, p.y - 1.5);
       for (let i = 4; i <= N; i++) { const q = at(i / N); ctx.lineTo(q.x - 1.2, q.y - 1.2); }
       ctx.stroke();
       const reel = at(0.2);
-      ctx.fillStyle = '#c9ced3'; ctx.strokeStyle = '#59626a'; ctx.lineWidth = 1.5;
+      ctx.fillStyle = R.reel || '#c9ced3'; ctx.strokeStyle = '#59626a'; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(reel.x + 5, reel.y + 7, 7, 0, 7); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#59626a'; ctx.beginPath(); ctx.arc(reel.x + 5, reel.y + 7, 2.2, 0, 7); ctx.fill();
       [0.42, 0.62, 0.8, 0.93].forEach(u => { const q = at(u); ctx.strokeStyle = night ? '#c9ced3' : '#59626a'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(q.x + 1.5, q.y + 2, 2, 0, 7); ctx.stroke(); });
@@ -440,24 +501,11 @@ window.FathomScene = (function () {
     }
     function float(x, wy, sub, tilt) {
       const s = clamp(W / 400, 0.95, 1.3);
-      const body = () => {
-        ctx.save(); ctx.translate(x, wy - 1 + sub); ctx.rotate(tilt); ctx.scale(s, s);
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, 0, 5.4, 7.6, 0, 0, 7); ctx.fill();
-        ctx.fillStyle = '#e2483d'; ctx.beginPath(); ctx.ellipse(0, 0, 5.4, 7.6, 0, Math.PI, 0); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, 0, 5.4, 7.6, 0, 0, 7); ctx.stroke();
-        ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(0, -7.6); ctx.lineTo(0, -13); ctx.stroke();
-        ctx.restore();
-      };
+      const body = () => { ctx.save(); ctx.translate(x, wy - 1 + sub); ctx.rotate(tilt); ctx.scale(s, s); drawFloat(ctx, floatId); ctx.restore(); };
       ctx.save(); ctx.beginPath(); ctx.rect(x - 30, wy - 60, 60, 60); ctx.clip(); body(); ctx.restore();
       ctx.save(); ctx.beginPath(); ctx.rect(x - 30, wy, 60, 40); ctx.clip(); ctx.globalAlpha = 0.28; body(); ctx.restore();
     }
-    function hanging(x, y) {
-      ctx.save(); ctx.translate(x, y); ctx.scale(0.9, 0.9);
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 7, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#e2483d'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 7, 0, Math.PI, 0); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(0, 0, 5, 7, 0, 0, 7); ctx.stroke();
-      ctx.restore();
-    }
+    function hanging(x, y) { ctx.save(); ctx.translate(x, y); ctx.scale(0.9, 0.9); drawFloat(ctx, floatId); ctx.restore(); }
 
     function frame(now) {
       raf = running ? requestAnimationFrame(frame) : 0;
@@ -570,6 +618,7 @@ window.FathomScene = (function () {
       start() { if (running) return; running = true; resize(); last = performance.now(); raf = requestAnimationFrame(frame); },
       stop() { running = false; cancelAnimationFrame(raf); },
       setArea(id) { night = id === 'deep' || id === 'polar'; calm = id === 'pond' || id === 'lake' || id === 'reef' || id === 'mangrove'; ripples = []; drops = []; },
+      setStyle(rodId, fId) { rodStyle = RODS.find(r => r.id === rodId) || RODS[0]; floatId = FLOATS.some(f => f.id === fId) ? fId : 'classic'; },
       cast() { castT = t; landed = false; },
       hook(fish, golden) {
         fishArt = artImage(fish, golden);
@@ -789,5 +838,5 @@ window.FathomScene = (function () {
     };
   }
 
-  return { backdrop, Fx, Tank, DECOR, TANKS, decorSvg };
+  return { backdrop, Fx, Tank, DECOR, TANKS, decorSvg, RODS, FLOATS, drawFloat };
 })();

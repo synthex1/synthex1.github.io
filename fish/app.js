@@ -3,7 +3,8 @@
 (function () {
   'use strict';
   const { AREAS, REGIONS, DIETS, RARITY, FISH, ORIGINAL_COUNT } = window.FATHOM_DATA;
-  const { DECOR, TANKS } = window.FathomScene;
+  const { DECOR, TANKS, RODS, FLOATS } = window.FathomScene;
+  const LOOKS = { rod: RODS, float: FLOATS };
   const BY_ID = {}, AREA = {};
   FISH.forEach(f => { BY_ID[f.id] = f; });
   AREAS.forEach((a, i) => { a.i = i; AREA[a.id] = a; });
@@ -35,6 +36,7 @@
       daily: { days: {}, stats: { played: 0, wins: 0, streak: 0, best: 0, lastWin: 0, dist: [0, 0, 0, 0, 0, 0] } },
       col: { coins: 0, bait: 0, useBait: false, caught: {}, seen: {}, unlocked: ['pond'], area: 'pond', gear: { rod: 0, reel: 0, line: 0, lure: 0 } },
       tank: { size: 0, fish: [], decor: {}, set: false },
+      style: { rod: 'classic', float: 'classic', own: {} },
       bounty: { day: 0, id: '', done: false }
     };
   }
@@ -71,6 +73,12 @@
     o.tank.fish = (Array.isArray(tk.fish) ? tk.fish : []).filter((id, n, arr) => typeof id === 'string' && BY_ID[id] && arr.indexOf(id) === n).slice(0, 40);
     DECOR.forEach(x => { if (x.id in dc) o.tank.decor[x.id] = dc[x.id] ? 1 : 0; });
     o.tank.set = !!tk.set;
+    const sty = obj(raw.style), own = obj(sty.own);
+    ['rod', 'float'].forEach(kind => {
+      LOOKS[kind].forEach(x => { if (x.cost && own[kind + ':' + x.id]) o.style.own[kind + ':' + x.id] = 1; });
+      const pick = LOOKS[kind].find(x => x.id === sty[kind]);
+      if (pick && (!pick.cost || o.style.own[kind + ':' + pick.id])) o.style[kind] = pick.id;
+    });
     if (BY_ID[bo.id]) o.bounty = { day: int(bo.day, 0, 0, 1e7), id: bo.id, done: !!bo.done };
     if (raw.base && typeof raw.base === 'object') o.base = { coins: int(raw.base.coins, 0, 0, 1e12), bait: int(raw.base.bait, 0, 0, 1e6) };
     const pd = raw.pending;
@@ -126,6 +134,9 @@
     DECOR.forEach(x => { if (x.id in L.tank.decor) M.tank.decor[x.id] = L.tank.decor[x.id]; else if (x.id in R.tank.decor) M.tank.decor[x.id] = R.tank.decor[x.id]; });
     M.tank.fish = (L.tank.fish.length || L.tank.set ? L.tank.fish : R.tank.fish).filter(id => c.caught[id]);
     M.tank.set = L.tank.set || R.tank.set;
+    // rod and float looks: everything bought is kept; what is fitted is this device's choice
+    Object.assign(M.style.own, R.style.own, L.style.own);
+    ['rod', 'float'].forEach(kind => { M.style[kind] = !L.base && L.style[kind] === 'classic' ? R.style[kind] : L.style[kind]; });
     M.bounty = R.bounty.day > L.bounty.day ? R.bounty : L.bounty.day > R.bounty.day ? L.bounty : { day: L.bounty.day, id: L.bounty.id, done: L.bounty.done || R.bounty.done };
     M.base = fromBackup ? L.base : { coins: R.col.coins, bait: R.col.bait };
     return M;
@@ -134,9 +145,9 @@
   /* --- the account copy --- */
   const SLOT_KEY = 'fathom.slot';
   let cloudRef = null, cloudDb = null, cloudKind = 'local', cloudOn = false, canName = false, slot = '', cloudBusy = false, cloudDirty = false, pushTimer = null, pushQueued = false, lastPull = 0;
-  const bodyOf = X => ({ v: 1, t: X.t, seenHelp: X.seenHelp, daily: X.daily, col: X.col, tank: X.tank, bounty: X.bounty });
+  const bodyOf = X => ({ v: 1, t: X.t, seenHelp: X.seenHelp, daily: X.daily, col: X.col, tank: X.tank, bounty: X.bounty, style: X.style });
   const cloudBody = () => JSON.parse(JSON.stringify(bodyOf(S)));
-  function applyMerged(M) { S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col; S.tank = M.tank; S.bounty = M.bounty; }
+  function applyMerged(M) { S.base = M.base; S.seenHelp = M.seenHelp; S.daily = M.daily; S.col = M.col; S.tank = M.tank; S.bounty = M.bounty; S.style = M.style; }
   const canon = v => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => { o[key] = x[key]; return o; }, {}) : x));
   const within = (p, ms) => Promise.race([p, new Promise((res, rej) => setTimeout(() => rej({ code: 'unavailable' }), ms))]);
   /* kind: 'account' (the player's private save), 'named' (a save the player
@@ -889,6 +900,7 @@
       $('backdrop').innerHTML = window.FathomScene.backdrop(cur.id);
       fx.setArea(cur.id);
     }
+    fx.setStyle(S.style.rod, S.style.float);
     renderBounty();
     renderNote();
   }
@@ -943,11 +955,33 @@
       return `<div class="shop-item"><div><b>${g.name}</b><span class="lv">${pips}</span><p>${g.desc}</p></div>
         <button class="btn small" data-gear="${g.id}" ${maxed || S.col.coins < cost ? 'disabled' : ''}>${maxed ? 'Maxed' : cost.toLocaleString()}</button></div>`;
     }).join('');
-    openModal(`<h2>Tackle shop</h2><p class="muted"><i class="coin"></i> ${S.col.coins.toLocaleString()} coins</p>${items}`);
+    const looks = (kind, title, what) => `<h3>${title}</h3>` + LOOKS[kind].map(x => {
+      const key = kind + ':' + x.id, own = !x.cost || S.style.own[key], on = S.style[kind] === x.id;
+      const pic = kind === 'rod' ? `<span class="rod-sw" style="background:${x.sw}"></span>` : `<canvas class="float-pic" width="84" height="84" data-fpic="${x.id}"></canvas>`;
+      return `<div class="shop-item"><div class="deco-row">${pic}<div><b>${x.name}</b><p>${on ? 'In use' : own ? 'Owned' : what}</p></div></div>` +
+        (on ? '<button class="btn small ghost" disabled>In use</button>'
+          : own ? `<button class="btn small ghost" data-look="${key}">Use</button>`
+          : `<button class="btn small" data-look="${key}" ${S.col.coins < x.cost ? 'disabled' : ''}>${x.cost.toLocaleString()}</button>`) + '</div>';
+    }).join('');
+    const top = $('modal').hidden ? 0 : $('modal-body').parentNode.scrollTop;
+    openModal(`<h2>Tackle shop</h2><p class="muted"><i class="coin"></i> ${S.col.coins.toLocaleString()} coins</p><h3>Upgrades</h3>${items}` +
+      looks('rod', 'Rod finish', 'Changes how your rod looks') + looks('float', 'Float', 'Changes your float'));
+    $('modal-body').parentNode.scrollTop = top; // buying something should not jump back to the top
+    $('modal-body').querySelectorAll('[data-fpic]').forEach(c => {
+      const x = c.getContext('2d');
+      x.translate(42, 50); x.scale(3.4, 3.4);
+      window.FathomScene.drawFloat(x, c.dataset.fpic);
+    });
     $('modal-body').querySelectorAll('button[data-gear]').forEach(b => b.addEventListener('click', () => {
       const id = b.dataset.gear, cost = GEAR_COST[S.col.gear[id]];
       if (cost === undefined || S.col.coins < cost) return;
       S.col.coins -= cost; S.col.gear[id]++; save();
+      renderFishing(); showShop();
+    }));
+    $('modal-body').querySelectorAll('button[data-look]').forEach(b => b.addEventListener('click', () => {
+      const key = b.dataset.look, kind = key.split(':')[0], x = LOOKS[kind].find(y => y.id === key.split(':')[1]);
+      if (x.cost && !S.style.own[key]) { if (S.col.coins < x.cost) return; S.col.coins -= x.cost; S.style.own[key] = 1; }
+      S.style[kind] = x.id; save();
       renderFishing(); showShop();
     }));
   }
